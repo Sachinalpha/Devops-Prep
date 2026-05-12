@@ -1,0 +1,3097 @@
+
+================================================================================
+         DEVOPS SCRIPTING GUIDE — SHELL & PYTHON (FAANG/PRODUCTION LEVEL)
+         Linux Basics + 25 Shell Scripts + 25 Python Scripts
+         Target: 2 Years Experience Level
+================================================================================
+
+TABLE OF CONTENTS
+─────────────────
+1. Linux Basics
+2. Shell Scripting (25 Scripts)
+3. Python Scripting (25 Scripts)
+
+================================================================================
+                          SECTION 1: LINUX BASICS
+================================================================================
+
+ESSENTIAL COMMANDS EVERY DEVOPS ENGINEER MUST KNOW
+────────────────────────────────────────────────────
+
+FILE SYSTEM NAVIGATION
+  pwd                        → Print current working directory
+  ls -la                     → List all files including hidden, with permissions
+  cd /path/to/dir            → Change directory
+  find / -name "file.txt"    → Find a file by name from root
+  locate filename            → Fast file search using indexed database
+  tree -L 2                  → Show directory tree 2 levels deep
+
+FILE OPERATIONS
+  cp -r src/ dest/           → Copy directory recursively
+  mv old.txt new.txt         → Move/rename a file
+  rm -rf dir/                → Delete directory forcefully (use with caution!)
+  touch file.txt             → Create empty file / update timestamp
+  cat file.txt               → Print file content
+  less file.txt              → View file with paging (press q to quit)
+  head -n 20 file.txt        → First 20 lines of file
+  tail -f /var/log/app.log   → Follow log file in real time
+  wc -l file.txt             → Count lines in file
+
+TEXT PROCESSING (BIG IN FAANG)
+  grep -r "error" /var/log/  → Search text recursively in directory
+  grep -i "warn" app.log     → Case-insensitive search
+  awk '{print $1, $3}' f     → Print columns 1 and 3
+  sed 's/old/new/g' file     → Replace all occurrences in a file
+  cut -d',' -f1 file.csv     → Extract first column from CSV
+  sort file.txt              → Sort file alphabetically
+  sort -n -r numbers.txt     → Sort numerically in reverse
+  uniq -c sorted.txt         → Count duplicate lines
+  tr 'a-z' 'A-Z' < file      → Translate lowercase to uppercase
+
+PERMISSIONS (CRITICAL FOR PRODUCTION)
+  chmod 755 script.sh        → rwxr-xr-x (owner:rwx, group:rx, others:rx)
+  chmod 600 secrets.txt      → rw------- (only owner can read/write)
+  chown user:group file      → Change ownership
+  umask 022                  → Default file creation mask
+  ls -l                      → See file permissions
+
+PROCESS MANAGEMENT
+  ps aux                     → Show all running processes
+  ps aux | grep nginx        → Find specific process
+  kill -9 PID                → Force kill a process
+  killall nginx              → Kill all processes named nginx
+  top / htop                 → Real-time process monitor
+  nohup ./script.sh &        → Run process in background that survives logout
+  jobs                       → List background jobs
+  fg %1                      → Bring job 1 to foreground
+
+DISK & MEMORY
+  df -h                      → Disk space usage (human readable)
+  du -sh /var/log/*          → Size of each item in /var/log
+  free -h                    → Memory usage (human readable)
+  lsblk                      → List block devices
+  iostat -x 1 5              → Disk I/O stats every 1 sec, 5 times
+
+NETWORKING
+  curl -I https://site.com   → Get HTTP headers only
+  wget https://url/file      → Download a file
+  netstat -tulpn             → Show listening ports with process IDs
+  ss -tulpn                  → Modern replacement for netstat
+  ping -c 4 8.8.8.8          → Ping with 4 packets
+  traceroute google.com      → Trace network path
+  nslookup domain.com        → DNS lookup
+  dig domain.com             → Advanced DNS lookup
+  ip addr show               → Show network interfaces/IPs
+  ssh user@host              → Connect to remote machine
+
+COMPRESSION & ARCHIVING
+  tar -czf archive.tar.gz dir/    → Create compressed tar archive
+  tar -xzf archive.tar.gz        → Extract compressed tar archive
+  tar -tzf archive.tar.gz        → List contents without extracting
+  zip -r archive.zip dir/        → Create zip archive
+  unzip archive.zip              → Extract zip archive
+  gzip file.txt                  → Compress file (replaces original)
+  gunzip file.txt.gz             → Decompress file
+
+ENVIRONMENT VARIABLES
+  export VAR=value           → Set environment variable for session
+  echo $VAR                  → Print variable value
+  env                        → List all environment variables
+  printenv PATH              → Print specific env variable
+  unset VAR                  → Remove variable
+  source ~/.bashrc           → Reload bash configuration
+
+USEFUL SHORTCUTS
+  Ctrl+C                     → Kill current process
+  Ctrl+Z                     → Suspend current process
+  Ctrl+D                     → Exit / EOF
+  Ctrl+L                     → Clear terminal
+  Ctrl+R                     → Reverse search command history
+  !!                         → Repeat last command
+  !$                         → Last argument of previous command
+  history | tail -20         → Show last 20 commands
+
+CRON (SCHEDULED JOBS)
+  crontab -e                 → Edit user cron jobs
+  crontab -l                 → List cron jobs
+  # Cron syntax: MIN HOUR DOM MON DOW command
+  # 0 2 * * * /path/script   → Run at 2:00 AM every day
+  # */5 * * * * /path/script → Run every 5 minutes
+  # 0 9 * * 1-5 /cmd         → Run at 9 AM, Mon-Fri
+
+REDIRECTION & PIPES
+  command > file.txt         → Redirect stdout (overwrite)
+  command >> file.txt        → Redirect stdout (append)
+  command 2> error.log       → Redirect stderr
+  command &> all.log         → Redirect both stdout and stderr
+  command1 | command2        → Pipe output of cmd1 to cmd2
+  command < input.txt        → Use file as stdin
+
+================================================================================
+                      SECTION 2: SHELL SCRIPTING (25 SCRIPTS)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 1: Health Check Script (Production Must-Have)
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# health_check.sh
+# Purpose: Check system health - CPU, memory, disk usage, services
+# Commonly used in production to alert DevOps teams
+
+# ─── CONFIGURATION ───────────────────────────────────────────────────────────
+THRESHOLD_CPU=80          # Alert if CPU usage exceeds 80%
+THRESHOLD_MEM=80          # Alert if memory usage exceeds 80%
+THRESHOLD_DISK=90         # Alert if disk usage exceeds 90%
+LOG_FILE="/var/log/health_check.log"   # Where to save logs
+EMAIL="devops@company.com"             # Alert email address
+
+# ─── TIMESTAMP ────────────────────────────────────────────────────────────────
+DATE=$(date '+%Y-%m-%d %H:%M:%S')
+# date '+%Y-%m-%d %H:%M:%S' → formats the current date/time as "2024-01-15 10:30:00"
+# $(...) → command substitution: runs command and puts output into variable
+
+# ─── CPU CHECK ────────────────────────────────────────────────────────────────
+CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+# top -bn1   → run top in batch mode (-b), 1 iteration (-n1), non-interactive
+# grep "Cpu(s)" → filter the CPU line
+# awk '{print $2}' → print the 2nd field (the CPU usage percentage)
+# cut -d'%' -f1   → remove the % sign, keep only the number
+
+# Integer comparison using bc (basic calculator for floating point)
+if (( $(echo "$CPU_USAGE > $THRESHOLD_CPU" | bc -l) )); then
+  echo "[$DATE] ALERT: CPU usage is ${CPU_USAGE}% (threshold: ${THRESHOLD_CPU}%)" | tee -a $LOG_FILE
+  # tee -a → write to stdout AND append to log file simultaneously
+fi
+
+# ─── MEMORY CHECK ─────────────────────────────────────────────────────────────
+MEM_TOTAL=$(free | grep Mem | awk '{print $2}')
+# free      → shows memory stats
+# grep Mem  → filter the row labelled "Mem"
+# awk '{print $2}' → get the "Total" column
+
+MEM_USED=$(free | grep Mem | awk '{print $3}')
+# awk '{print $3}' → get the "Used" column
+
+MEM_USAGE=$(( MEM_USED * 100 / MEM_TOTAL ))
+# $((...)) → arithmetic expression: compute percentage
+
+if [ "$MEM_USAGE" -gt "$THRESHOLD_MEM" ]; then
+  echo "[$DATE] ALERT: Memory usage is ${MEM_USAGE}%" | tee -a $LOG_FILE
+fi
+# -gt → "greater than" numeric comparison in [ ] test
+
+# ─── DISK CHECK ───────────────────────────────────────────────────────────────
+df -h | grep -vE '^Filesystem|tmpfs|cdrom' | awk '{print $5 " " $6}' | while read OUTPUT; do
+  # df -h         → disk usage in human-readable format
+  # grep -vE      → exclude lines matching this regex pattern (-v = invert, -E = extended regex)
+  # awk '{print $5 " " $6}' → print the "Use%" and "Mounted on" columns
+  # while read OUTPUT → read each line one at a time
+  USAGE=$(echo $OUTPUT | awk '{print $1}' | cut -d'%' -f1)
+  PARTITION=$(echo $OUTPUT | awk '{print $2}')
+  if [ "$USAGE" -gt "$THRESHOLD_DISK" ]; then
+    echo "[$DATE] ALERT: Partition $PARTITION is at ${USAGE}% disk usage" | tee -a $LOG_FILE
+  fi
+done
+
+# ─── SERVICE CHECK ────────────────────────────────────────────────────────────
+SERVICES=("nginx" "mysql" "redis")
+# Array declaration in bash
+
+for SERVICE in "${SERVICES[@]}"; do
+  # "${SERVICES[@]}" → expands all array elements
+  if ! systemctl is-active --quiet "$SERVICE"; then
+    # systemctl is-active → checks if service is running
+    # ! → negate the condition (true if service is NOT active)
+    # --quiet → suppress output, only set exit code
+    echo "[$DATE] CRITICAL: $SERVICE is NOT running!" | tee -a $LOG_FILE
+    # Uncomment to auto-restart: systemctl restart "$SERVICE"
+  fi
+done
+
+echo "[$DATE] Health check complete." | tee -a $LOG_FILE
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 2: Automated Log Rotation & Cleanup
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# log_cleanup.sh
+# Purpose: Archive old logs and delete logs older than retention period
+# Run via cron: 0 1 * * * /opt/scripts/log_cleanup.sh
+
+LOG_DIR="/var/log/myapp"    # Directory containing application logs
+ARCHIVE_DIR="/mnt/archives/logs"  # Where to store archived logs
+RETENTION_DAYS=30           # Delete files older than this many days
+MAX_SIZE_MB=100             # Archive logs larger than this size
+
+# ─── CREATE ARCHIVE DIRECTORY ─────────────────────────────────────────────────
+mkdir -p "$ARCHIVE_DIR"
+# mkdir -p → create directory and all parent directories if they don't exist
+
+# ─── GET TODAY'S DATE FOR NAMING ──────────────────────────────────────────────
+ARCHIVE_NAME="logs_$(date +%Y%m%d).tar.gz"
+# $(date +%Y%m%d) → formats date as "20240115" (no separators)
+
+# ─── COMPRESS LOGS OLDER THAN 7 DAYS ─────────────────────────────────────────
+find "$LOG_DIR" -name "*.log" -mtime +7 -exec gzip {} \;
+# find ... -name "*.log" → find all .log files
+# -mtime +7              → modified more than 7 days ago
+# -exec gzip {} \;       → run gzip on each found file
+#                          {} = placeholder for the current file
+#                          \; = end the -exec command
+
+# ─── ARCHIVE LARGE LOG FILES ──────────────────────────────────────────────────
+find "$LOG_DIR" -name "*.log" -size +${MAX_SIZE_MB}M | while read LOGFILE; do
+  # -size +100M → files larger than 100 megabytes
+  BASENAME=$(basename "$LOGFILE" .log)
+  # basename → strips the directory path and optional suffix from filename
+  mv "$LOGFILE" "$ARCHIVE_DIR/${BASENAME}_$(date +%Y%m%d).log"
+  # Move to archive with date stamp in the filename
+  touch "$LOGFILE"
+  # Recreate the empty log file so the application doesn't crash looking for it
+done
+
+# ─── DELETE OLD ARCHIVED FILES ────────────────────────────────────────────────
+find "$ARCHIVE_DIR" -mtime +${RETENTION_DAYS} -type f -delete
+# -type f  → only match files (not directories)
+# -delete  → delete found files (more efficient than -exec rm)
+
+# ─── REPORT ───────────────────────────────────────────────────────────────────
+DELETED=$(find "$ARCHIVE_DIR" -mtime +${RETENTION_DAYS} | wc -l)
+echo "[$(date)] Log cleanup complete. Archived logs in $ARCHIVE_DIR"
+df -h "$ARCHIVE_DIR"  # Show disk usage of archive directory
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 3: Disk Space Alert via Email/Slack
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# disk_alert.sh
+# Purpose: Monitor disk usage and alert via Slack webhook when threshold breached
+# Real production pattern used at scale
+
+SLACK_WEBHOOK="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+THRESHOLD=85     # Alert at 85% disk usage
+HOSTNAME=$(hostname)  # Get the machine's hostname for alert context
+
+# ─── CHECK EACH MOUNTED PARTITION ─────────────────────────────────────────────
+df -H | grep -vE "^Filesystem|tmpfs|udev" | while read LINE; do
+  # df -H → use powers of 1000 (vs -h which uses 1024)
+  USAGE=$(echo "$LINE" | awk '{print $5}' | tr -d '%')
+  # tr -d '%' → delete the percent sign character (-d = delete)
+  MOUNT=$(echo "$LINE" | awk '{print $6}')
+  # $6 → 6th column = mount point
+
+  if [ "$USAGE" -gt "$THRESHOLD" ]; then
+    # Build Slack message payload in JSON format
+    PAYLOAD="{
+      \"text\": \"🚨 *DISK ALERT* on \`${HOSTNAME}\`\",
+      \"attachments\": [{
+        \"color\": \"danger\",
+        \"fields\": [{
+          \"title\": \"Partition\",
+          \"value\": \"$MOUNT\",
+          \"short\": true
+        },{
+          \"title\": \"Usage\",
+          \"value\": \"${USAGE}%\",
+          \"short\": true
+        }]
+      }]
+    }"
+    # JSON with nested object and array — note escaped quotes with \"
+
+    # Send to Slack using curl
+    curl -s -X POST -H 'Content-type: application/json' \
+      --data "$PAYLOAD" "$SLACK_WEBHOOK"
+    # -s         → silent mode (no progress meter)
+    # -X POST    → use HTTP POST method
+    # -H         → set HTTP header
+    # --data     → send this data as request body
+  fi
+done
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 4: Automated Application Deployment
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# deploy.sh
+# Purpose: Pull latest code, build, test, restart service — zero-downtime deploy
+# Widely used in CI/CD pipelines
+
+set -euo pipefail
+# set -e → exit immediately on any error (crucial for deployments!)
+# set -u → treat unset variables as errors (prevents bugs)
+# set -o pipefail → if any command in a pipe fails, the whole pipe fails
+
+APP_DIR="/opt/myapp"
+BACKUP_DIR="/opt/backups/$(date +%Y%m%d_%H%M%S)"
+GIT_REPO="https://github.com/company/myapp.git"
+BRANCH="${1:-main}"
+# ${1:-main} → use first argument if provided, otherwise default to "main"
+# This makes branch configurable: ./deploy.sh staging
+
+# ─── LOGGING HELPER ───────────────────────────────────────────────────────────
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+# This defines a function: log "message" → prints timestamped message
+# $1 inside function refers to the first argument passed TO the function
+
+# ─── TRAP FOR ROLLBACK ON FAILURE ─────────────────────────────────────────────
+rollback() {
+  log "DEPLOYMENT FAILED! Rolling back to previous version..."
+  cp -r "$BACKUP_DIR/." "$APP_DIR/"
+  # cp -r dir/. dest/ → copy all contents including hidden files
+  systemctl restart myapp
+  exit 1
+}
+trap rollback ERR
+# trap → catch signals and errors
+# ERR   → triggered whenever a command exits with non-zero status
+# This automatically calls rollback() if anything fails
+
+# ─── BACKUP CURRENT VERSION ───────────────────────────────────────────────────
+log "Creating backup at $BACKUP_DIR"
+mkdir -p "$BACKUP_DIR"
+cp -r "$APP_DIR/." "$BACKUP_DIR/"
+
+# ─── PULL LATEST CODE ─────────────────────────────────────────────────────────
+log "Pulling latest code from branch: $BRANCH"
+cd "$APP_DIR"
+git fetch origin
+git checkout "$BRANCH"
+git pull origin "$BRANCH"
+
+# ─── INSTALL DEPENDENCIES ─────────────────────────────────────────────────────
+log "Installing dependencies..."
+npm install --production
+# --production → skip devDependencies (faster, smaller for production)
+
+# ─── RUN TESTS ────────────────────────────────────────────────────────────────
+log "Running tests..."
+npm test
+# If tests fail, set -e will trigger the trap → automatic rollback
+
+# ─── GRACEFUL RESTART ─────────────────────────────────────────────────────────
+log "Restarting application..."
+systemctl reload-or-restart myapp
+# reload-or-restart → try reload (graceful, zero downtime) first,
+#                     restart only if reload isn't supported
+
+log "Deployment successful! Branch: $BRANCH"
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 5: Database Backup Script (MySQL/Postgres)
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# db_backup.sh
+# Purpose: Backup all databases, compress, upload to S3, cleanup old backups
+# This is a standard pattern at every company using RDS or self-managed DBs
+
+set -euo pipefail
+
+DB_HOST="localhost"
+DB_USER="backup_user"
+DB_PASS="$(cat /run/secrets/db_password)"
+# /run/secrets/ → Docker secrets or vault-mounted secrets path
+# Never hardcode passwords! Always read from secure locations
+
+BACKUP_DIR="/opt/db_backups"
+S3_BUCKET="s3://company-db-backups"
+DATE=$(date +%Y%m%d_%H%M%S)
+RETENTION_DAYS=7
+
+mkdir -p "$BACKUP_DIR"
+
+# ─── GET LIST OF ALL DATABASES ────────────────────────────────────────────────
+DATABASES=$(mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASS" \
+  -e "SHOW DATABASES;" | grep -vE "^(Database|information_schema|performance_schema|mysql|sys)$")
+# mysql -e "..." → execute SQL query and exit
+# grep -vE       → exclude system/metadata databases
+
+# ─── BACKUP EACH DATABASE ─────────────────────────────────────────────────────
+for DB in $DATABASES; do
+  BACKUP_FILE="$BACKUP_DIR/${DB}_${DATE}.sql.gz"
+
+  echo "Backing up database: $DB"
+  mysqldump -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASS" \
+    --single-transaction \
+    --routines \
+    --triggers \
+    "$DB" | gzip > "$BACKUP_FILE"
+  # mysqldump → creates SQL dump of the database
+  # --single-transaction → consistent backup without locking tables (for InnoDB)
+  # --routines → include stored procedures
+  # --triggers → include triggers
+  # | gzip > file → pipe directly to gzip (no temp file needed)
+
+  echo "Uploading to S3..."
+  aws s3 cp "$BACKUP_FILE" "$S3_BUCKET/$(basename $BACKUP_FILE)"
+  # aws s3 cp → AWS CLI: copy local file to S3
+  # basename  → strip directory path, keep just filename
+done
+
+# ─── CLEANUP OLD LOCAL BACKUPS ────────────────────────────────────────────────
+find "$BACKUP_DIR" -name "*.sql.gz" -mtime +$RETENTION_DAYS -delete
+echo "Backup complete. Old backups (>${RETENTION_DAYS} days) cleaned up."
+
+# ─── CLEANUP OLD S3 BACKUPS ───────────────────────────────────────────────────
+CUTOFF_DATE=$(date -d "-${RETENTION_DAYS} days" +%Y-%m-%d)
+# date -d "-7 days" → date 7 days in the past
+aws s3 ls "$S3_BUCKET/" | awk '{print $4}' | while read FILE; do
+  FILE_DATE=$(echo "$FILE" | grep -oP '\d{8}')
+  # grep -oP → only print matching part (-o), use Perl regex (-P)
+  # \d{8} → 8 consecutive digits (matches our YYYYMMDD date format)
+  if [[ "$FILE_DATE" < "$(date -d $CUTOFF_DATE +%Y%m%d)" ]]; then
+    aws s3 rm "$S3_BUCKET/$FILE"
+  fi
+done
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 6: SSL Certificate Expiry Monitor
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# ssl_monitor.sh
+# Purpose: Check SSL expiry for a list of domains and alert before expiration
+# Critical for preventing production outages due to expired certificates
+
+DOMAINS=("api.company.com" "www.company.com" "auth.company.com")
+WARN_DAYS=30              # Warn if cert expires within 30 days
+CRITICAL_DAYS=7           # Critical alert if less than 7 days
+
+for DOMAIN in "${DOMAINS[@]}"; do
+  # Get certificate expiry date using openssl
+  EXPIRY=$(echo | openssl s_client -servername "$DOMAIN" \
+    -connect "${DOMAIN}:443" 2>/dev/null \
+    | openssl x509 -noout -enddate \
+    | cut -d= -f2)
+  # openssl s_client → establish TLS connection and print cert info
+  # -servername → required for SNI (Server Name Indication) - needed when
+  #               multiple certs on same IP
+  # 2>/dev/null → discard stderr (openssl outputs lots of verbose info there)
+  # openssl x509 -noout -enddate → parse cert and print only the expiry date
+  # cut -d= -f2 → split by = and take the 2nd field (the actual date string)
+
+  # Convert expiry to epoch seconds for math
+  EXPIRY_EPOCH=$(date -d "$EXPIRY" +%s)
+  NOW_EPOCH=$(date +%s)
+  DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+  # 86400 = seconds per day
+  # Integer arithmetic to find days remaining
+
+  if [ "$DAYS_LEFT" -lt "$CRITICAL_DAYS" ]; then
+    echo "CRITICAL: $DOMAIN cert expires in $DAYS_LEFT days! ($EXPIRY)"
+    # In production: send PagerDuty alert here
+  elif [ "$DAYS_LEFT" -lt "$WARN_DAYS" ]; then
+    echo "WARNING: $DOMAIN cert expires in $DAYS_LEFT days ($EXPIRY)"
+  else
+    echo "OK: $DOMAIN cert valid for $DAYS_LEFT days ($EXPIRY)"
+  fi
+done
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 7: User Account Audit Script
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# user_audit.sh
+# Purpose: Audit user accounts - find users with sudo, no passwords, old logins
+# Security compliance requirement in enterprise environments
+
+REPORT="/tmp/user_audit_$(date +%Y%m%d).txt"
+# Write to /tmp for temporary reports
+
+exec > >(tee "$REPORT")
+# exec > >(...)  → redirect all stdout for this script to the process substitution
+# tee "$REPORT"  → write to both stdout and the report file
+# This means everything printed from now on goes to both terminal and file
+
+echo "=== USER AUDIT REPORT: $(date) ==="
+echo "=== Host: $(hostname) ==="
+echo ""
+
+# ─── USERS WITH SUDO PRIVILEGES ───────────────────────────────────────────────
+echo "--- SUDO USERS ---"
+grep -Po '^sudo.+:\K.*$' /etc/group
+# /etc/group stores group memberships
+# grep -Po → print only matching part (-o) using Perl regex (-P)
+# ^sudo.+:\K.*$ → match "sudo" group line, \K resets match start,
+#                 .*$ captures the members after the colon
+
+echo ""
+echo "--- USERS WITH NO PASSWORD ---"
+awk -F: '($2 == "" || $2 == "!") {print $1}' /etc/shadow
+# /etc/shadow stores hashed passwords
+# -F: → use colon as field delimiter
+# $2 == ""  → no password set
+# $2 == "!" → password locked/disabled
+# print $1  → print the username (first field)
+
+echo ""
+echo "--- USERS WITH UID 0 (ROOT-LEVEL) ---"
+awk -F: '($3 == 0) {print $1}' /etc/passwd
+# /etc/passwd stores user account info
+# $3 == 0 → UID is 0 (root-equivalent, should ONLY be root)
+# This detects backdoor root accounts
+
+echo ""
+echo "--- ACCOUNTS NOT LOGGED IN FOR 90+ DAYS ---"
+lastlog | awk 'NR>1 && $NF != "in" {print $0}' | while read LINE; do
+  USER=$(echo "$LINE" | awk '{print $1}')
+  LAST_LOGIN=$(echo "$LINE" | awk '{print $4, $5, $6, $7, $8, $9}')
+  echo "User: $USER | Last Login: $LAST_LOGIN"
+done
+# lastlog → shows last login time for all users
+# NR>1     → skip header line (NR = number of records/lines)
+# $NF != "in" → $NF is last field; "in" appears in "Never logged in" lines
+
+echo ""
+echo "Audit report saved to: $REPORT"
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 8: Docker Container Cleanup
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# docker_cleanup.sh
+# Purpose: Clean up stopped containers, dangling images, old volumes
+# Prevents disk space issues on Docker hosts in production
+
+echo "=== Docker Cleanup Started: $(date) ==="
+
+# ─── SHOW DISK USAGE BEFORE ───────────────────────────────────────────────────
+echo "--- Before cleanup ---"
+docker system df
+# docker system df → shows disk space used by Docker (containers, images, volumes)
+
+# ─── REMOVE STOPPED CONTAINERS ────────────────────────────────────────────────
+echo "Removing stopped containers..."
+STOPPED=$(docker ps -aq --filter "status=exited")
+# docker ps -a      → list all containers (running + stopped)
+# -q                → quiet mode: only print container IDs
+# --filter status=exited → only stopped containers
+
+if [ -n "$STOPPED" ]; then
+  # -n → true if string is non-empty (i.e., there are stopped containers)
+  docker rm $STOPPED
+fi
+
+# ─── REMOVE DANGLING IMAGES ───────────────────────────────────────────────────
+echo "Removing dangling images..."
+DANGLING=$(docker images -q --filter "dangling=true")
+# -q → only print image IDs
+# dangling=true → images not tagged and not referenced by any container
+# These accumulate during builds and waste disk space
+
+if [ -n "$DANGLING" ]; then
+  docker rmi $DANGLING
+fi
+
+# ─── REMOVE OLD IMAGES (OLDER THAN 30 DAYS) ──────────────────────────────────
+echo "Removing images older than 30 days..."
+docker image prune -a --force --filter "until=720h"
+# prune -a       → remove ALL unused images (not just dangling)
+# --force        → don't ask for confirmation
+# --filter until=720h → only remove images older than 720 hours (30 days)
+
+# ─── CLEAN UNUSED VOLUMES ─────────────────────────────────────────────────────
+echo "Removing unused volumes..."
+docker volume prune --force
+# Unused volumes = not mounted to any container
+# WARNING: Be careful with this in production — verify first!
+
+# ─── CLEAN BUILD CACHE ────────────────────────────────────────────────────────
+docker builder prune --force --filter "until=168h"
+# Build cache older than 168 hours (7 days)
+
+echo "--- After cleanup ---"
+docker system df
+echo "=== Cleanup Complete ==="
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 9: Kubernetes Pod Restart Monitor
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# k8s_pod_monitor.sh
+# Purpose: Monitor pods with high restart counts — indicates crash loops
+# Common in Kubernetes environments at FAANG companies
+
+NAMESPACE="${1:-default}"
+# Use passed namespace or default to "default"
+RESTART_THRESHOLD=5       # Alert if a pod has restarted more than 5 times
+KUBECONFIG="${HOME}/.kube/config"  # Path to kubectl config
+
+# ─── CHECK IF kubectl IS AVAILABLE ────────────────────────────────────────────
+if ! command -v kubectl &>/dev/null; then
+  echo "ERROR: kubectl not found in PATH"
+  exit 1
+fi
+# command -v → check if command exists (preferred over `which`)
+# &>/dev/null → discard both stdout and stderr
+
+echo "Monitoring pods in namespace: $NAMESPACE"
+echo "Threshold: $RESTART_THRESHOLD restarts"
+echo "----------------------------------------"
+
+# ─── GET ALL PODS AND THEIR RESTART COUNTS ────────────────────────────────────
+kubectl get pods -n "$NAMESPACE" --no-headers | while read POD_LINE; do
+  # --no-headers → skip the column header row
+  POD_NAME=$(echo "$POD_LINE" | awk '{print $1}')
+  STATUS=$(echo "$POD_LINE" | awk '{print $3}')
+  RESTARTS=$(echo "$POD_LINE" | awk '{print $4}')
+  # kubectl output columns: NAME | READY | STATUS | RESTARTS | AGE
+
+  if [ "$RESTARTS" -gt "$RESTART_THRESHOLD" ] 2>/dev/null; then
+    # 2>/dev/null → suppress error if RESTARTS is not a number
+    echo "⚠️  HIGH RESTARTS: Pod=$POD_NAME Status=$STATUS Restarts=$RESTARTS"
+    echo "   Recent logs:"
+    kubectl logs "$POD_NAME" -n "$NAMESPACE" --tail=10 2>/dev/null
+    # --tail=10 → only show last 10 lines of logs
+    echo "---"
+  fi
+
+  # ─── FLAG CRASHLOOPBACKOFF ────────────────────────────────────────────────
+  if [[ "$STATUS" == *"CrashLoop"* ]]; then
+    echo "🔴 CRASHLOOP: $POD_NAME is in $STATUS"
+    kubectl describe pod "$POD_NAME" -n "$NAMESPACE" | grep -A5 "Last State:"
+    # grep -A5 → show 5 lines AFTER the matching line (context)
+  fi
+done
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 10: Git Repository Backup
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# git_backup.sh
+# Purpose: Clone all org repos and back them up to a backup server
+# Common in companies that need disaster recovery for source code
+
+GITHUB_ORG="mycompany"
+GITHUB_TOKEN="$(cat /run/secrets/github_token)"
+BACKUP_DIR="/mnt/backups/github"
+DATE=$(date +%Y%m%d)
+
+mkdir -p "$BACKUP_DIR/$DATE"
+cd "$BACKUP_DIR/$DATE"
+
+# ─── FETCH ALL REPOS VIA GITHUB API ───────────────────────────────────────────
+echo "Fetching repo list from GitHub API..."
+REPOS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+  "https://api.github.com/orgs/$GITHUB_ORG/repos?per_page=100&type=all" \
+  | python3 -c "import sys,json; [print(r['ssh_url']) for r in json.load(sys.stdin)]")
+# curl -s → silent (no progress bar)
+# -H "Authorization: token ..." → send auth header for private repos
+# python3 -c → inline Python to parse JSON and extract SSH clone URLs
+# per_page=100 → get up to 100 repos per page
+
+# ─── CLONE EACH REPO AS A BARE REPO ──────────────────────────────────────────
+for REPO_URL in $REPOS; do
+  REPO_NAME=$(basename "$REPO_URL" .git)
+  # basename url .git → extract repo name, remove .git suffix
+  echo "Backing up: $REPO_NAME"
+  git clone --bare "$REPO_URL" "${REPO_NAME}.git" 2>/dev/null \
+    || git -C "${REPO_NAME}.git" remote update
+  # git clone --bare → clone without working directory (smaller, faster)
+  #                    Perfect for backups — you don't need to edit files
+  # || → OR: if clone fails (repo exists), run remote update instead
+  # git remote update → fetch all branches from all remotes
+done
+
+# ─── COMPRESS THE WHOLE BACKUP ────────────────────────────────────────────────
+cd "$BACKUP_DIR"
+tar -czf "github_backup_${DATE}.tar.gz" "$DATE/"
+rm -rf "$DATE/"
+# Remove uncompressed directory after creating archive
+
+echo "Backup complete: github_backup_${DATE}.tar.gz"
+ls -lh "github_backup_${DATE}.tar.gz"
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 11: CPU-Intensive Process Killer
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# cpu_killer.sh
+# Purpose: Find and optionally kill processes consuming excessive CPU
+# Used in production to prevent single runaway processes from starving others
+
+CPU_THRESHOLD=90    # Kill processes using more than 90% CPU
+WHITELIST=("mysql" "java" "node")  # Never kill these processes
+DRY_RUN="${1:-true}"  # Pass "false" as argument to actually kill
+
+echo "=== CPU Hog Monitor: $(date) ==="
+
+ps aux --sort=-%cpu | awk 'NR>1 && $3>'"$CPU_THRESHOLD"'' | while read LINE; do
+  # ps aux         → list all processes with resource usage
+  # --sort=-%cpu   → sort by CPU descending (- = descending)
+  # awk 'NR>1 &&   → skip header line AND
+  #     $3>90'     → only show rows where CPU column ($3) > 90
+
+  PID=$(echo "$LINE" | awk '{print $2}')
+  CPU=$(echo "$LINE" | awk '{print $3}')
+  PROC=$(echo "$LINE" | awk '{print $11}')
+  # $11 → command name column in ps aux output
+
+  # ─── CHECK WHITELIST ──────────────────────────────────────────────────────
+  SKIP=false
+  for SAFE_PROC in "${WHITELIST[@]}"; do
+    if [[ "$PROC" == *"$SAFE_PROC"* ]]; then
+      # [[ == *pattern* ]] → wildcard/glob matching in [[ ]]
+      SKIP=true
+      break  # Exit the for loop early
+    fi
+  done
+
+  if [ "$SKIP" = true ]; then
+    echo "SKIPPED (whitelisted): PID=$PID CPU=${CPU}% CMD=$PROC"
+    continue  # Skip to next iteration of while loop
+  fi
+
+  echo "HIGH CPU: PID=$PID CPU=${CPU}% CMD=$PROC"
+
+  if [ "$DRY_RUN" = "false" ]; then
+    kill -15 "$PID"
+    # kill -15 → send SIGTERM (graceful termination request)
+    # Use -9 (SIGKILL) only if -15 doesn't work — SIGKILL cannot be caught
+    echo "Sent SIGTERM to PID $PID"
+  else
+    echo "(DRY RUN) Would kill PID $PID"
+  fi
+done
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 12: Multi-Server SSH Command Runner
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# parallel_ssh.sh
+# Purpose: Run a command on multiple servers simultaneously
+# Used for mass updates, configuration changes, health checks across fleets
+
+SERVERS_FILE="${1:-/etc/server_list.txt}"
+# Read server list from file, default to /etc/server_list.txt
+COMMAND="${2:-uptime}"
+# Command to run, default to uptime
+SSH_USER="deploy"
+SSH_KEY="~/.ssh/deploy_key"
+MAX_PARALLEL=10      # Run on 10 servers at a time
+TIMEOUT=30           # SSH connection timeout in seconds
+
+# ─── VALIDATE INPUT ───────────────────────────────────────────────────────────
+if [ ! -f "$SERVERS_FILE" ]; then
+  echo "ERROR: Server file not found: $SERVERS_FILE"
+  echo "Usage: $0 <servers_file> <command>"
+  exit 1
+fi
+# -f → true if file exists and is a regular file
+
+RESULTS_DIR="/tmp/ssh_results_$(date +%s)"
+# $(date +%s) → Unix timestamp (seconds since epoch) — great for unique temp dirs
+mkdir -p "$RESULTS_DIR"
+
+# ─── RUN COMMAND ON EACH SERVER IN PARALLEL ───────────────────────────────────
+while IFS= read -r SERVER; do
+  # IFS= → don't strip leading/trailing whitespace
+  # read -r → raw mode: don't interpret backslashes
+  [[ "$SERVER" =~ ^#|^$ ]] && continue
+  # Skip comment lines (starting with #) and empty lines
+  # =~ → regex match in [[ ]]
+
+  # Run in background with & (parallel execution)
+  (
+    # Subshell () → runs in separate process
+    RESULT=$(ssh -i "$SSH_KEY" \
+      -o ConnectTimeout=$TIMEOUT \
+      -o StrictHostKeyChecking=no \
+      -o BatchMode=yes \
+      "$SSH_USER@$SERVER" "$COMMAND" 2>&1)
+    # -o ConnectTimeout → give up after N seconds
+    # -o StrictHostKeyChecking=no → don't prompt for host key verification
+    # -o BatchMode=yes → fail if password needed (we're using keys)
+    # 2>&1 → merge stderr into stdout
+
+    EXIT_CODE=$?
+    # $? → exit code of the previous command (0=success, non-zero=failure)
+
+    echo "=== $SERVER (exit: $EXIT_CODE) ===" > "$RESULTS_DIR/$SERVER"
+    echo "$RESULT" >> "$RESULTS_DIR/$SERVER"
+  ) &
+
+  # ─── RATE LIMITING: LIMIT PARALLEL JOBS ──────────────────────────────────
+  while [ $(jobs -r | wc -l) -ge $MAX_PARALLEL ]; do
+    # jobs -r → list only running background jobs
+    # wc -l   → count them
+    sleep 0.5  # Wait before checking again
+  done
+done < "$SERVERS_FILE"
+
+wait
+# wait → block until ALL background jobs complete
+
+# ─── DISPLAY RESULTS ──────────────────────────────────────────────────────────
+echo "=== RESULTS ==="
+for RESULT_FILE in "$RESULTS_DIR"/*; do
+  cat "$RESULT_FILE"
+  echo ""
+done
+
+rm -rf "$RESULTS_DIR"  # Cleanup temp files
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 13: Automated Service Restart with Alerting
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# service_watchdog.sh
+# Purpose: Monitor a service, restart it if down, alert on repeated failures
+# A poor-man's systemd watchdog — used when systemd not available (containers)
+
+SERVICE="nginx"
+MAX_RESTARTS=3        # After 3 restarts, send critical alert and stop trying
+RESTART_COUNT=0
+CHECK_INTERVAL=30     # Check every 30 seconds
+ALERT_EMAIL="oncall@company.com"
+
+send_alert() {
+  local SUBJECT="$1"   # local → variable is local to this function only
+  local BODY="$2"
+  echo "$BODY" | mail -s "$SUBJECT" "$ALERT_EMAIL"
+  # mail -s → send email with subject
+  # Requires mailutils or sendmail configured on system
+}
+
+while true; do
+  # while true → infinite loop (watchdog runs forever)
+  if ! systemctl is-active --quiet "$SERVICE"; then
+    RESTART_COUNT=$((RESTART_COUNT + 1))
+    # $((...)) → arithmetic expansion
+
+    echo "[$(date)] $SERVICE is down. Restart attempt #$RESTART_COUNT"
+
+    if [ "$RESTART_COUNT" -le "$MAX_RESTARTS" ]; then
+      systemctl restart "$SERVICE"
+      sleep 5  # Give service time to start
+
+      if systemctl is-active --quiet "$SERVICE"; then
+        echo "[$(date)] $SERVICE restarted successfully."
+        send_alert "[$SERVICE] Restarted on $(hostname)" \
+          "$SERVICE went down and was restarted. Count: $RESTART_COUNT"
+        RESTART_COUNT=0  # Reset counter on successful restart
+      fi
+    else
+      # Service is down and we've exceeded restart limit
+      send_alert "CRITICAL: [$SERVICE] REPEATED FAILURES on $(hostname)" \
+        "$SERVICE has failed $RESTART_COUNT times and is not recovering. Manual intervention required."
+      echo "[$(date)] CRITICAL: Exceeded max restarts. Stopping watchdog."
+      exit 1
+    fi
+  else
+    RESTART_COUNT=0   # Service is up, reset counter
+  fi
+
+  sleep "$CHECK_INTERVAL"
+done
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 14: Parse and Analyze Nginx Access Logs
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# nginx_analyze.sh
+# Purpose: Extract top IPs, URLs, status codes, slowest requests from nginx logs
+# Classic DevOps interview question + real production use case
+
+LOG_FILE="${1:-/var/log/nginx/access.log}"
+TOP_N=10    # Show top 10 results
+
+if [ ! -f "$LOG_FILE" ]; then
+  echo "Log file not found: $LOG_FILE"
+  exit 1
+fi
+
+echo "=== NGINX LOG ANALYSIS ==="
+echo "File: $LOG_FILE"
+echo "Lines: $(wc -l < $LOG_FILE)"
+echo ""
+
+# ─── TOP IP ADDRESSES ─────────────────────────────────────────────────────────
+echo "--- Top $TOP_N IP Addresses ---"
+awk '{print $1}' "$LOG_FILE" | sort | uniq -c | sort -rn | head -$TOP_N
+# awk '{print $1}' → print first field (IP address in nginx log format)
+# sort             → sort alphabetically (required before uniq)
+# uniq -c          → count consecutive duplicates, prepend count
+# sort -rn         → sort numerically (-n) in reverse (-r) = highest first
+# head -$TOP_N     → show only first 10 lines
+
+echo ""
+echo "--- Top $TOP_N Requested URLs ---"
+awk '{print $7}' "$LOG_FILE" | sort | uniq -c | sort -rn | head -$TOP_N
+# $7 → 7th field = URL/path in nginx log format
+# Nginx default log format: IP - - [date] "METHOD URL PROTOCOL" status bytes
+
+echo ""
+echo "--- HTTP Status Code Distribution ---"
+awk '{print $9}' "$LOG_FILE" | sort | uniq -c | sort -rn
+# $9 → HTTP status code field
+
+echo ""
+echo "--- Top $TOP_N Slowest Requests (if response time logged) ---"
+awk '{print $NF, $7}' "$LOG_FILE" | sort -rn | head -$TOP_N
+# $NF → last field (response time if nginx logs it with $request_time)
+
+echo ""
+echo "--- Requests per Hour ---"
+awk '{print $4}' "$LOG_FILE" | cut -d: -f2 | sort | uniq -c
+# $4 → timestamp field like [15/Jan/2024:10:30:45]
+# cut -d: -f2 → extract hour (split by :, take 2nd field)
+
+echo ""
+echo "--- 4xx and 5xx Error Requests ---"
+awk '$9 ~ /^[45]/' "$LOG_FILE" | awk '{print $9, $7, $1}' | sort | uniq -c | sort -rn | head -$TOP_N
+# $9 ~ /^[45]/ → filter rows where status code starts with 4 or 5
+# ~ → regex match operator in awk
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 15: Environment Setup Script (New Server Bootstrap)
+────────────────────────────────────────────────────────────────────────────────
+
+#!/bin/bash
+# bootstrap.sh
+# Purpose: Configure a fresh server — install packages, create users, set configs
+# Used in cloud-init, Ansible bootstrapping, or manual provisioning
+
+set -euo pipefail
+
+# ─── DETECT OS ────────────────────────────────────────────────────────────────
+if [ -f /etc/os-release ]; then
+  # Source the file to get OS variables
+  . /etc/os-release
+  # . (dot) = source command: runs file in current shell context
+  OS=$ID          # ubuntu, debian, centos, rhel, etc.
+  VERSION=$VERSION_ID
+else
+  echo "Cannot detect OS"
+  exit 1
+fi
+
+echo "Setting up server: $(hostname) | OS: $OS $VERSION"
+
+# ─── INSTALL PACKAGES ─────────────────────────────────────────────────────────
+PACKAGES=("curl" "wget" "git" "vim" "htop" "jq" "unzip" "net-tools")
+
+case "$OS" in
+  ubuntu|debian)
+    # case → pattern matching, like switch/case in other languages
+    apt-get update -qq
+    # -qq → quiet quiet: minimal output
+    apt-get install -y "${PACKAGES[@]}"
+    # -y → auto-answer yes to prompts
+    ;;
+    # ;; → end of this case branch
+  centos|rhel|fedora)
+    yum install -y "${PACKAGES[@]}"
+    ;;
+  *)
+    # * → wildcard: matches anything not matched above (default case)
+    echo "Unsupported OS: $OS"
+    exit 1
+    ;;
+esac
+
+# ─── CREATE DEPLOY USER ───────────────────────────────────────────────────────
+DEPLOY_USER="deploy"
+if ! id "$DEPLOY_USER" &>/dev/null; then
+  # id user → prints user info, non-zero exit if user doesn't exist
+  useradd -m -s /bin/bash -G sudo "$DEPLOY_USER"
+  # useradd -m → create home directory
+  # -s /bin/bash → set login shell
+  # -G sudo → add to sudo group
+  echo "Created user: $DEPLOY_USER"
+fi
+
+# ─── SET UP SSH KEY ───────────────────────────────────────────────────────────
+SSH_DIR="/home/$DEPLOY_USER/.ssh"
+mkdir -p "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+# 700 → rwx------ (only owner can access this directory)
+
+# Copy authorized keys from root (or fetch from your key server)
+cp /root/.ssh/authorized_keys "$SSH_DIR/authorized_keys" 2>/dev/null || true
+# || true → don't fail even if source doesn't exist (set -e would abort otherwise)
+chmod 600 "$SSH_DIR/authorized_keys"
+chown -R "$DEPLOY_USER:$DEPLOY_USER" "$SSH_DIR"
+# -R → recursive: change ownership of all files inside too
+
+# ─── CONFIGURE SSHD ───────────────────────────────────────────────────────────
+sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+# sed -i → edit file in-place
+# s/old/new/ → substitute
+# ^#\? → line starts with optional #
+# .* → anything after the setting
+# This disables root SSH login for security
+
+sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+# Disable password auth — SSH keys only
+
+systemctl restart sshd
+
+echo "Bootstrap complete!"
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPTS 16-25: Quick Reference (Key Concepts Each)
+────────────────────────────────────────────────────────────────────────────────
+
+SCRIPT 16: File Integrity Monitor
+──────────────────────────────────
+#!/bin/bash
+# Check files haven't been modified (security compliance)
+WATCH_DIR="/etc"
+BASELINE="/var/lib/integrity/baseline.sha256"
+
+if [ ! -f "$BASELINE" ]; then
+  find "$WATCH_DIR" -type f -exec sha256sum {} \; > "$BASELINE"
+  # sha256sum → compute SHA256 hash of file
+  echo "Baseline created."
+else
+  find "$WATCH_DIR" -type f -exec sha256sum {} \; | diff "$BASELINE" -
+  # diff file1 file2 → show differences; - means read from stdin
+  # Any output means a file changed!
+fi
+
+SCRIPT 17: Network Port Scanner
+──────────────────────────────────
+#!/bin/bash
+# Scan common ports on a host (DevOps security audit)
+HOST="${1:-localhost}"
+PORTS=(22 80 443 3306 5432 6379 8080 27017)
+
+for PORT in "${PORTS[@]}"; do
+  (echo >/dev/tcp/$HOST/$PORT) 2>/dev/null \
+    && echo "OPEN:   $PORT" \
+    || echo "CLOSED: $PORT"
+  # /dev/tcp/host/port → bash built-in TCP connection
+  # If connection opens, port is open; if it fails, port is closed
+done
+
+SCRIPT 18: Automated Report Generator
+──────────────────────────────────────
+#!/bin/bash
+# Generate HTML system report and email it
+REPORT="/tmp/sysreport.html"
+{
+  # { } groups commands, redirected as a block
+  echo "<html><body><pre>"
+  echo "<h2>System Report: $(hostname) - $(date)</h2>"
+  echo "<h3>Uptime:</h3>"; uptime
+  echo "<h3>Memory:</h3>"; free -h
+  echo "<h3>Disk:</h3>"; df -h
+  echo "<h3>Top Processes:</h3>"; ps aux --sort=-%cpu | head -15
+  echo "</pre></body></html>"
+} > "$REPORT"
+mail -s "Daily Report: $(hostname)" -a "Content-Type: text/html" ops@company.com < "$REPORT"
+
+SCRIPT 19: Config File Validator
+──────────────────────────────────
+#!/bin/bash
+# Validate config files before deploying
+validate_nginx() {
+  nginx -t 2>&1 | grep -q "successful"
+  # -t → test configuration, 2>&1 captures stderr too
+  return $?  # Return the exit code
+}
+validate_yaml() {
+  python3 -c "import yaml,sys; yaml.safe_load(sys.stdin)" < "$1"
+  # Inline Python: try to parse YAML, exit non-zero on error
+}
+for CONFIG in /etc/nginx/sites-enabled/*; do
+  if validate_nginx; then echo "VALID: $CONFIG"; else echo "INVALID: $CONFIG"; fi
+done
+
+SCRIPT 20: Automated SSH Key Rotation
+──────────────────────────────────────
+#!/bin/bash
+# Generate new SSH key pair and distribute to servers
+KEY_DIR="/home/deploy/.ssh"
+BACKUP="${KEY_DIR}/id_rsa.bak"
+cp "${KEY_DIR}/id_rsa" "$BACKUP"   # Backup existing key
+ssh-keygen -t ed25519 -f "${KEY_DIR}/id_rsa" -N "" -C "deploy@$(hostname)-$(date +%Y%m)"
+# -t ed25519 → use modern Ed25519 algorithm (better than RSA)
+# -N ""      → empty passphrase (for automation)
+# -C comment → label the key
+while IFS= read -r SERVER; do
+  ssh-copy-id -i "${KEY_DIR}/id_rsa.pub" "deploy@$SERVER"
+  # ssh-copy-id → adds public key to remote server's authorized_keys
+done < /etc/server_list.txt
+
+SCRIPT 21: S3 Sync with Change Detection
+──────────────────────────────────────────
+#!/bin/bash
+# Sync local directory to S3, only upload changed files
+LOCAL_DIR="/var/www/html"
+S3_BUCKET="s3://my-website-bucket"
+aws s3 sync "$LOCAL_DIR" "$S3_BUCKET" \
+  --delete \
+  --exclude "*.tmp" \
+  --cache-control "max-age=86400" \
+  --acl public-read
+# --delete → remove files from S3 that don't exist locally
+# --exclude → skip temp files
+# --cache-control → set HTTP caching headers on upload
+# --acl public-read → make uploaded files publicly readable
+
+SCRIPT 22: Memory Leak Detector
+──────────────────────────────────
+#!/bin/bash
+# Track memory growth of a process over time
+PID="${1:?Usage: $0 <PID>}"
+# :? → if variable unset, print error message and exit
+INTERVAL=5
+LOGFILE="/tmp/mem_${PID}.log"
+echo "timestamp,rss_kb,vsz_kb" > "$LOGFILE"
+while kill -0 "$PID" 2>/dev/null; do
+  # kill -0 → doesn't kill; just checks if process exists
+  RSS=$(ps -o rss= -p "$PID")   # RSS = Resident Set Size (physical RAM used)
+  VSZ=$(ps -o vsz= -p "$PID")   # VSZ = Virtual Size (all virtual memory)
+  echo "$(date +%s),$RSS,$VSZ" >> "$LOGFILE"
+  sleep "$INTERVAL"
+done
+echo "Process ended. Log: $LOGFILE"
+awk -F, 'NR>1{print $1,$2}' "$LOGFILE" | awk 'END{print "Max RSS:",max,"KB"} $2>max{max=$2}'
+
+SCRIPT 23: Jenkins Build Trigger
+──────────────────────────────────
+#!/bin/bash
+# Trigger and monitor Jenkins pipeline via REST API
+JENKINS_URL="https://jenkins.company.com"
+JOB_NAME="deploy-production"
+TOKEN="$(cat /run/secrets/jenkins_token)"
+BRANCH="${1:-main}"
+
+# Trigger the build
+BUILD_QUEUE=$(curl -s -X POST \
+  "${JENKINS_URL}/job/${JOB_NAME}/buildWithParameters?BRANCH=${BRANCH}" \
+  --user "automation:$TOKEN" \
+  -D - | grep "Location:" | awk '{print $2}')
+# -D - → dump HTTP headers to stdout
+# Location header contains the queue URL for the triggered build
+
+echo "Build queued: $BUILD_QUEUE"
+sleep 5
+
+# Get build number from queue
+BUILD_URL=$(curl -s "${BUILD_QUEUE}api/json" --user "automation:$TOKEN" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['executable']['url'])")
+
+echo "Build started: $BUILD_URL"
+
+# Poll until complete
+while true; do
+  STATUS=$(curl -s "${BUILD_URL}api/json" --user "automation:$TOKEN" \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result','IN_PROGRESS'))")
+  [ "$STATUS" != "IN_PROGRESS" ] && break
+  # [ ] test with string comparison, break when no longer in progress
+  sleep 10
+  echo "Still running..."
+done
+echo "Build result: $STATUS"
+[ "$STATUS" = "SUCCESS" ] && exit 0 || exit 1
+
+SCRIPT 24: Terraform State Backup
+──────────────────────────────────
+#!/bin/bash
+# Backup Terraform state files before running apply
+TF_DIR="${1:-$(pwd)}"
+BACKUP_S3="s3://tf-state-backups/$(basename $TF_DIR)"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Backup existing state
+if [ -f "${TF_DIR}/terraform.tfstate" ]; then
+  aws s3 cp "${TF_DIR}/terraform.tfstate" "${BACKUP_S3}/${DATE}.tfstate"
+  echo "State backed up to: ${BACKUP_S3}/${DATE}.tfstate"
+fi
+
+# Run terraform plan and capture output
+cd "$TF_DIR"
+terraform init -input=false
+terraform plan -out=tfplan -input=false 2>&1 | tee /tmp/tf_plan.log
+# tee → write to both terminal and log file
+PLAN_EXIT=${PIPESTATUS[0]}
+# PIPESTATUS → array of exit codes for each command in the last pipeline
+# PIPESTATUS[0] = exit code of terraform plan
+
+if [ "$PLAN_EXIT" -ne 0 ]; then
+  echo "Plan failed! Check /tmp/tf_plan.log"
+  exit 1
+fi
+echo "Plan successful. Run 'terraform apply tfplan' to apply."
+
+SCRIPT 25: Automated Incident Report Generator
+────────────────────────────────────────────────
+#!/bin/bash
+# Generate incident timeline from logs during an outage window
+START_TIME="${1:?Provide start time: YYYY-MM-DD HH:MM}"
+END_TIME="${2:?Provide end time: YYYY-MM-DD HH:MM}"
+LOG_SOURCES=("/var/log/nginx/error.log" "/var/log/app/error.log" "/var/log/syslog")
+
+REPORT="/tmp/incident_$(date +%Y%m%d_%H%M%S).txt"
+
+{
+  echo "INCIDENT REPORT"
+  echo "Host: $(hostname)"
+  echo "Period: $START_TIME to $END_TIME"
+  echo "Generated: $(date)"
+  echo "================================="
+
+  for LOG in "${LOG_SOURCES[@]}"; do
+    [ -f "$LOG" ] || continue   # Skip if file doesn't exist
+    echo ""
+    echo "=== $LOG ==="
+    # Use awk to filter log lines within the time window
+    awk -v start="$START_TIME" -v end="$END_TIME" '
+      {
+        # Extract timestamp from log line (adjust to your log format)
+        match($0, /[0-9]{4}\/[0-9]{2}\/[0-9]{2} [0-9]{2}:[0-9]{2}/, arr)
+        ts = arr[0]
+        if (ts >= start && ts <= end) print
+      }
+    ' "$LOG"
+    # -v → pass shell variable to awk as awk variable
+    # match(string, regex, array) → find regex in string, store in array
+  done
+} > "$REPORT"
+
+echo "Incident report: $REPORT"
+wc -l "$REPORT"
+
+
+================================================================================
+                     SECTION 3: PYTHON SCRIPTING (25 SCRIPTS)
+================================================================================
+
+NOTE: Run with: python3 script.py
+Install deps:  pip3 install requests boto3 paramiko psutil kubernetes
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 1: System Resource Monitor (Production-Grade)
+────────────────────────────────────────────────────────────────────────────────
+
+#!/usr/bin/env python3
+"""
+system_monitor.py
+Purpose: Monitor system resources and alert via Slack/email
+psutil is the go-to library for system stats in Python DevOps scripts
+"""
+
+import psutil          # System/process utilities library
+import smtplib         # Simple Mail Transfer Protocol client
+import json            # JSON encoding/decoding
+import time            # Time functions (sleep, time())
+import logging         # Python's built-in logging framework
+from datetime import datetime  # Date/time handling
+from email.mime.text import MIMEText  # Build email messages
+
+# Configure logging — every production script should have this
+logging.basicConfig(
+    level=logging.INFO,               # Log level: DEBUG < INFO < WARNING < ERROR < CRITICAL
+    format='%(asctime)s %(levelname)s %(message)s',  # Log format
+    handlers=[
+        logging.FileHandler('/var/log/sysmonitor.log'),  # Write to file
+        logging.StreamHandler()                           # Also print to terminal
+    ]
+)
+logger = logging.getLogger(__name__)
+# __name__ → module name; when run directly it's "__main__"
+
+# Configuration as constants — easy to change without touching logic
+CPU_THRESHOLD = 85      # Alert if CPU > 85%
+MEM_THRESHOLD = 80      # Alert if memory > 80%
+DISK_THRESHOLD = 90     # Alert if disk > 90%
+CHECK_INTERVAL = 60     # Check every 60 seconds
+
+def get_system_stats() -> dict:
+    """
+    Collect current system resource statistics.
+    Returns dict with CPU, memory, disk, and network metrics.
+    -> dict is a type hint: tells developers what the function returns
+    """
+    stats = {}
+
+    # CPU usage (percent, averaged over 1 second interval)
+    stats['cpu_percent'] = psutil.cpu_percent(interval=1)
+    # interval=1 → measure average CPU over 1 second (more accurate than 0)
+
+    # Memory statistics
+    mem = psutil.virtual_memory()
+    # .virtual_memory() returns named tuple with: total, available, used, percent, etc.
+    stats['mem_percent'] = mem.percent
+    stats['mem_used_gb'] = round(mem.used / (1024**3), 2)
+    # 1024**3 = 1 GB in bytes; ** is exponentiation in Python
+    # round(n, 2) → round to 2 decimal places
+
+    # Disk statistics for each partition
+    stats['disks'] = {}
+    for partition in psutil.disk_partitions():
+        # .disk_partitions() → list of all mounted partitions
+        try:
+            usage = psutil.disk_usage(partition.mountpoint)
+            stats['disks'][partition.mountpoint] = {
+                'percent': usage.percent,
+                'free_gb': round(usage.free / (1024**3), 2)
+            }
+        except PermissionError:
+            # Some partitions (like /proc) raise PermissionError
+            continue  # Skip inaccessible partitions
+
+    # Network I/O statistics
+    net = psutil.net_io_counters()
+    stats['net_bytes_sent'] = net.bytes_sent
+    stats['net_bytes_recv'] = net.bytes_recv
+
+    return stats
+
+def send_alert(subject: str, body: str, smtp_host: str = 'localhost') -> None:
+    """Send email alert — production scripts need reliable alerting"""
+    try:
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = 'monitoring@company.com'
+        msg['To'] = 'oncall@company.com'
+
+        with smtplib.SMTP(smtp_host) as server:
+            # with statement → context manager: auto-closes connection when done
+            server.sendmail(msg['From'], [msg['To']], msg.as_string())
+        logger.info(f"Alert sent: {subject}")
+        # f-string → f"..." lets you embed {variables} directly in strings
+    except Exception as e:
+        logger.error(f"Failed to send alert: {e}")
+        # Exception e → capture the error object for logging
+
+def check_thresholds(stats: dict) -> list:
+    """Check if any metric exceeds thresholds. Returns list of alerts."""
+    alerts = []
+
+    if stats['cpu_percent'] > CPU_THRESHOLD:
+        alerts.append(f"CPU HIGH: {stats['cpu_percent']}%")
+
+    if stats['mem_percent'] > MEM_THRESHOLD:
+        alerts.append(f"MEMORY HIGH: {stats['mem_percent']}%")
+
+    for mount, disk_stats in stats['disks'].items():
+        # .items() → iterate over key-value pairs in a dictionary
+        if disk_stats['percent'] > DISK_THRESHOLD:
+            alerts.append(f"DISK HIGH on {mount}: {disk_stats['percent']}%")
+
+    return alerts
+
+def main():
+    """Main monitoring loop — runs indefinitely"""
+    logger.info("System monitor started")
+
+    while True:  # Infinite loop — monitor runs forever
+        try:
+            stats = get_system_stats()
+            alerts = check_thresholds(stats)
+
+            if alerts:
+                alert_msg = "\n".join(alerts)  # Join list items with newlines
+                logger.warning(f"ALERTS:\n{alert_msg}")
+                send_alert("System Alert!", alert_msg)
+            else:
+                logger.info(f"OK - CPU:{stats['cpu_percent']}% MEM:{stats['mem_percent']}%")
+
+            time.sleep(CHECK_INTERVAL)
+
+        except KeyboardInterrupt:
+            # Ctrl+C sends SIGINT → Python raises KeyboardInterrupt
+            logger.info("Monitor stopped by user")
+            break  # Exit the while loop
+
+        except Exception as e:
+            logger.error(f"Monitor error: {e}", exc_info=True)
+            # exc_info=True → include full stack trace in log
+            time.sleep(10)  # Brief pause before retrying
+
+if __name__ == '__main__':
+    # Only run main() when script is executed directly,
+    # not when imported as a module by another script
+    main()
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 2: AWS EC2 Instance Manager
+────────────────────────────────────────────────────────────────────────────────
+
+#!/usr/bin/env python3
+"""
+ec2_manager.py
+Purpose: List, start, stop, tag EC2 instances using boto3 (AWS SDK for Python)
+Critical skill for any DevOps engineer working with AWS
+"""
+
+import boto3                    # AWS SDK for Python
+import argparse                 # Command-line argument parsing
+from botocore.exceptions import ClientError  # AWS-specific exceptions
+import json
+from typing import List, Dict  # Type hints for better code documentation
+
+def get_ec2_client(region: str = 'us-east-1'):
+    """Create and return an EC2 client for the specified region"""
+    return boto3.client('ec2', region_name=region)
+    # boto3.client() → low-level service client
+    # Credentials auto-loaded from: env vars, ~/.aws/credentials, IAM role
+
+def list_instances(client, filters: List[Dict] = None) -> List[Dict]:
+    """
+    List all EC2 instances with optional filters.
+    filters example: [{'Name': 'instance-state-name', 'Values': ['running']}]
+    """
+    kwargs = {}
+    if filters:
+        kwargs['Filters'] = filters
+    # **kwargs unpacking — only add Filters key if filters provided
+
+    try:
+        response = client.describe_instances(**kwargs)
+        # **kwargs → unpack dictionary as keyword arguments
+        instances = []
+        for reservation in response['Reservations']:
+            # EC2 returns instances grouped in Reservations
+            for instance in reservation['Instances']:
+                # Extract useful fields into a cleaner dict
+                name = next(
+                    (tag['Value'] for tag in instance.get('Tags', [])
+                     if tag['Key'] == 'Name'),
+                    'unnamed'
+                )
+                # next(generator, default) → get first matching tag or 'unnamed'
+                # generator expression: (x for x in iterable if condition)
+
+                instances.append({
+                    'id': instance['InstanceId'],
+                    'type': instance['InstanceType'],
+                    'state': instance['State']['Name'],
+                    'name': name,
+                    'ip': instance.get('PublicIpAddress', 'N/A'),
+                    # .get('key', default) → returns default if key not present
+                    'launch_time': str(instance['LaunchTime'])
+                })
+        return instances
+    except ClientError as e:
+        print(f"AWS Error: {e.response['Error']['Message']}")
+        return []
+
+def start_instances(client, instance_ids: List[str]) -> bool:
+    """Start stopped EC2 instances"""
+    try:
+        response = client.start_instances(InstanceIds=instance_ids)
+        starting = [i['InstanceId'] for i in response['StartingInstances']]
+        # List comprehension: [expression for item in iterable]
+        print(f"Starting instances: {starting}")
+        return True
+    except ClientError as e:
+        print(f"Error starting instances: {e}")
+        return False
+
+def stop_instances(client, instance_ids: List[str], force: bool = False) -> bool:
+    """Stop running EC2 instances"""
+    try:
+        response = client.stop_instances(
+            InstanceIds=instance_ids,
+            Force=force  # True = force stop (like pulling power)
+        )
+        stopping = [i['InstanceId'] for i in response['StoppingInstances']]
+        print(f"Stopping instances: {stopping}")
+        return True
+    except ClientError as e:
+        print(f"Error stopping instances: {e}")
+        return False
+
+def tag_instances(client, instance_ids: List[str], tags: Dict[str, str]) -> bool:
+    """Apply tags to EC2 instances — crucial for cost allocation & tracking"""
+    tag_list = [{'Key': k, 'Value': v} for k, v in tags.items()]
+    # Dict comprehension into list: convert {k:v} dict to [{'Key':k,'Value':v}] list
+    try:
+        client.create_tags(Resources=instance_ids, Tags=tag_list)
+        print(f"Tagged {len(instance_ids)} instances")
+        return True
+    except ClientError as e:
+        print(f"Error tagging: {e}")
+        return False
+
+def find_untagged_instances(client) -> List[str]:
+    """Find instances missing required tags — compliance checking"""
+    REQUIRED_TAGS = {'Environment', 'Owner', 'CostCenter'}
+    # Python set — unordered collection of unique values
+    all_instances = list_instances(client)
+    untagged = []
+    for inst in all_instances:
+        # We'd need the raw tags here; simplified for illustration
+        if inst['name'] == 'unnamed':
+            untagged.append(inst['id'])
+    return untagged
+
+def main():
+    parser = argparse.ArgumentParser(description='EC2 Instance Manager')
+    parser.add_argument('action', choices=['list', 'start', 'stop', 'tag', 'audit'])
+    # choices → only allow these specific values
+    parser.add_argument('--region', default='us-east-1')
+    parser.add_argument('--ids', nargs='+', help='Instance IDs')
+    # nargs='+' → accept one or more values as a list
+    parser.add_argument('--state', choices=['running', 'stopped', 'all'], default='all')
+    args = parser.parse_args()
+
+    client = get_ec2_client(args.region)
+
+    if args.action == 'list':
+        filters = None
+        if args.state != 'all':
+            filters = [{'Name': 'instance-state-name', 'Values': [args.state]}]
+        instances = list_instances(client, filters)
+        print(json.dumps(instances, indent=2, default=str))
+        # indent=2 → pretty-print with 2-space indentation
+        # default=str → convert non-serializable objects (like datetime) to strings
+
+    elif args.action == 'start' and args.ids:
+        start_instances(client, args.ids)
+
+    elif args.action == 'stop' and args.ids:
+        stop_instances(client, args.ids)
+
+    elif args.action == 'audit':
+        untagged = find_untagged_instances(client)
+        print(f"Untagged instances: {untagged}")
+
+if __name__ == '__main__':
+    main()
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 3: Log Parser and Anomaly Detector
+────────────────────────────────────────────────────────────────────────────────
+
+#!/usr/bin/env python3
+"""
+log_analyzer.py
+Purpose: Parse logs, detect anomalies, generate reports
+FAANG companies process billions of log lines — this is core DevOps work
+"""
+
+import re                   # Regular expressions
+import json
+import gzip                 # Read gzip compressed files
+from collections import Counter, defaultdict  # Specialized containers
+from datetime import datetime, timedelta
+from pathlib import Path    # Object-oriented file path handling
+from typing import Generator, Dict, List
+
+# Regex pattern for Nginx access logs
+# Named groups (?P<name>...) make extraction readable
+NGINX_LOG_PATTERN = re.compile(
+    r'(?P<ip>\d+\.\d+\.\d+\.\d+) '     # IP address
+    r'- - '                              # ident and auth (usually -)
+    r'\[(?P<time>[^\]]+)\] '             # timestamp in brackets
+    r'"(?P<method>\w+) (?P<url>[^ ]+) [^"]+" '  # Request line
+    r'(?P<status>\d{3}) '               # Status code
+    r'(?P<bytes>\d+)'                    # Response bytes
+)
+
+def read_log_file(filepath: str) -> Generator[str, None, None]:
+    """
+    Generator function to read logs — memory efficient for huge files.
+    A generator yields values one at a time instead of loading all into memory.
+    For a 100GB log file, this is the only sane approach.
+    """
+    path = Path(filepath)
+
+    if path.suffix == '.gz':
+        # Handle compressed log files
+        with gzip.open(filepath, 'rt', encoding='utf-8') as f:
+            # 'rt' → read mode, text (vs 'rb' for binary)
+            yield from f  # yield from → yield each line from the file iterator
+    else:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            yield from f
+
+def parse_log_line(line: str) -> dict:
+    """Parse a single nginx log line into structured data"""
+    match = NGINX_LOG_PATTERN.match(line.strip())
+    if not match:
+        return {}  # Return empty dict for lines that don't match
+
+    data = match.groupdict()
+    # .groupdict() → returns dict of all named capture groups
+
+    # Convert types from string to appropriate Python types
+    data['status'] = int(data['status'])
+    data['bytes'] = int(data['bytes'])
+    data['time'] = datetime.strptime(data['time'], '%d/%b/%Y:%H:%M:%S %z')
+    # strptime → parse string to datetime using format codes
+    # %d=day, %b=month name, %Y=year, %H=hour, %M=min, %S=sec, %z=timezone
+
+    return data
+
+def analyze_logs(filepath: str) -> Dict:
+    """
+    Analyze log file and return statistics dict.
+    Uses Counter and defaultdict for efficient counting.
+    """
+    stats = {
+        'total_requests': 0,
+        'status_codes': Counter(),   # Counter auto-initializes counts to 0
+        'top_ips': Counter(),
+        'top_urls': Counter(),
+        'errors_5xx': [],
+        'requests_per_hour': defaultdict(int),  # default value = 0 for new keys
+        'bytes_by_url': defaultdict(int),
+    }
+
+    for line in read_log_file(filepath):
+        entry = parse_log_line(line)
+        if not entry:
+            continue  # Skip unparseable lines
+
+        stats['total_requests'] += 1
+        stats['status_codes'][entry['status']] += 1
+        stats['top_ips'][entry['ip']] += 1
+        stats['top_urls'][entry['url']] += 1
+
+        # Group by hour for traffic pattern analysis
+        hour_key = entry['time'].strftime('%Y-%m-%d %H:00')
+        stats['requests_per_hour'][hour_key] += 1
+        stats['bytes_by_url'][entry['url']] += entry['bytes']
+
+        # Collect 5xx errors for deeper investigation
+        if entry['status'] >= 500:
+            stats['errors_5xx'].append({
+                'time': str(entry['time']),
+                'url': entry['url'],
+                'status': entry['status'],
+                'ip': entry['ip']
+            })
+
+    return stats
+
+def detect_anomalies(stats: Dict) -> List[str]:
+    """
+    Simple anomaly detection:
+    - High error rate
+    - Unusual traffic spikes
+    - Single IP making too many requests (potential DDoS/scraping)
+    """
+    anomalies = []
+
+    # Check error rate
+    total = stats['total_requests']
+    if total == 0:
+        return anomalies
+
+    error_5xx = sum(count for code, count in stats['status_codes'].items() if code >= 500)
+    # Generator expression in sum(): sums values matching condition
+    error_rate = error_5xx / total * 100
+
+    if error_rate > 5:  # More than 5% errors is concerning
+        anomalies.append(f"HIGH ERROR RATE: {error_rate:.1f}% of requests are 5xx")
+        # :.1f → format float with 1 decimal place
+
+    # Check for IPs making excessive requests (rate limit detection)
+    if stats['top_ips']:
+        top_ip, top_count = stats['top_ips'].most_common(1)[0]
+        # .most_common(n) → return n most common elements as [(item, count), ...]
+        ip_ratio = top_count / total * 100
+        if ip_ratio > 20:
+            anomalies.append(
+                f"SUSPICIOUS IP: {top_ip} made {top_count} requests ({ip_ratio:.1f}% of traffic)"
+            )
+
+    # Traffic spike detection — compare hours to mean
+    if stats['requests_per_hour']:
+        counts = list(stats['requests_per_hour'].values())
+        mean = sum(counts) / len(counts)
+        for hour, count in stats['requests_per_hour'].items():
+            if count > mean * 3:  # More than 3x the average
+                anomalies.append(f"TRAFFIC SPIKE at {hour}: {count} requests (mean: {mean:.0f})")
+
+    return anomalies
+
+def generate_report(stats: Dict, anomalies: List[str]) -> str:
+    """Format analysis results as a readable report"""
+    report = []
+    report.append("=" * 60)
+    report.append(f"LOG ANALYSIS REPORT - {datetime.now()}")
+    report.append("=" * 60)
+    report.append(f"\nTotal Requests: {stats['total_requests']:,}")
+    # :, → format number with thousands separator (1000000 → 1,000,000)
+
+    report.append("\n--- Status Code Distribution ---")
+    for code, count in sorted(stats['status_codes'].items()):
+        # sorted() → returns sorted list (by status code here)
+        pct = count / stats['total_requests'] * 100
+        report.append(f"  {code}: {count:,} ({pct:.1f}%)")
+
+    report.append("\n--- Top 10 IPs ---")
+    for ip, count in stats['top_ips'].most_common(10):
+        report.append(f"  {ip}: {count:,} requests")
+
+    report.append("\n--- Top 10 URLs ---")
+    for url, count in stats['top_urls'].most_common(10):
+        report.append(f"  {url}: {count:,} requests")
+
+    if anomalies:
+        report.append("\n--- ANOMALIES DETECTED ---")
+        for anomaly in anomalies:
+            report.append(f"  ⚠️  {anomaly}")
+
+    return "\n".join(report)
+    # "\n".join(list) → concatenate list items with newline separator
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 4: Kubernetes Resource Monitor via Python
+────────────────────────────────────────────────────────────────────────────────
+
+#!/usr/bin/env python3
+"""
+k8s_monitor.py
+Purpose: Monitor Kubernetes cluster resources using the official Python client
+"""
+
+from kubernetes import client, config  # pip install kubernetes
+from kubernetes.client.rest import ApiException
+import json
+from datetime import datetime, timezone
+
+def load_kube_config():
+    """Load kubeconfig — works both in-cluster and from local ~/.kube/config"""
+    try:
+        config.load_incluster_config()
+        # load_incluster_config → use ServiceAccount token mounted in pod
+        # This is how scripts running INSIDE a K8s cluster authenticate
+        print("Using in-cluster config")
+    except config.ConfigException:
+        config.load_kube_config()
+        # Fallback to local ~/.kube/config for development
+        print("Using local kubeconfig")
+
+def get_pods_by_namespace(namespace: str = None) -> list:
+    """List pods across all or specific namespace"""
+    v1 = client.CoreV1Api()
+    # CoreV1Api → access core Kubernetes objects (pods, services, configmaps)
+
+    try:
+        if namespace:
+            pods = v1.list_namespaced_pod(namespace)
+        else:
+            pods = v1.list_pod_for_all_namespaces()
+            # list_pod_for_all_namespaces → gets pods from every namespace
+
+        result = []
+        for pod in pods.items:
+            # .items → list of pod objects in the response
+            containers = []
+            for container in pod.spec.containers:
+                containers.append({
+                    'name': container.name,
+                    'image': container.image,
+                    'resources': {
+                        'requests': {
+                            'cpu': container.resources.requests.get('cpu') if container.resources.requests else None,
+                            'memory': container.resources.requests.get('memory') if container.resources.requests else None,
+                        } if container.resources else {}
+                    }
+                })
+
+            result.append({
+                'name': pod.metadata.name,
+                'namespace': pod.metadata.namespace,
+                'status': pod.status.phase,
+                # .phase → Pending/Running/Succeeded/Failed/Unknown
+                'restarts': sum(
+                    cs.restart_count
+                    for cs in (pod.status.container_statuses or [])
+                    # (x or []) → use empty list if x is None (avoids errors)
+                ),
+                'node': pod.spec.node_name,
+                'containers': containers,
+                'age': str(datetime.now(timezone.utc) - pod.metadata.creation_timestamp)
+                if pod.metadata.creation_timestamp else 'unknown'
+            })
+        return result
+    except ApiException as e:
+        print(f"Kubernetes API error: {e.status} - {e.reason}")
+        return []
+
+def check_crashlooping_pods(namespace: str = None) -> list:
+    """Find pods in CrashLoopBackOff — the bane of every DevOps engineer"""
+    pods = get_pods_by_namespace(namespace)
+    crash_pods = []
+
+    for pod in pods:
+        if pod['restarts'] > 3 or pod['status'] in ['Failed', 'Unknown']:
+            crash_pods.append(pod)
+
+    return crash_pods
+
+def get_resource_quota_usage(namespace: str) -> dict:
+    """Check how much of the namespace resource quota is being used"""
+    v1 = client.CoreV1Api()
+    try:
+        quotas = v1.list_namespaced_resource_quota(namespace)
+        result = {}
+        for quota in quotas.items:
+            name = quota.metadata.name
+            result[name] = {
+                'hard': dict(quota.spec.hard),   # Maximum allowed
+                'used': dict(quota.status.used)   # Currently in use
+            }
+            # dict() → convert the Kubernetes object map to regular Python dict
+        return result
+    except ApiException as e:
+        return {}
+
+def scale_deployment(namespace: str, deployment: str, replicas: int) -> bool:
+    """Scale a deployment to specified replicas"""
+    apps_v1 = client.AppsV1Api()
+    # AppsV1Api → access Deployments, StatefulSets, DaemonSets, ReplicaSets
+
+    try:
+        # Patch just the replicas field (partial update)
+        body = {'spec': {'replicas': replicas}}
+        apps_v1.patch_namespaced_deployment_scale(
+            name=deployment,
+            namespace=namespace,
+            body=body
+        )
+        print(f"Scaled {deployment} to {replicas} replicas")
+        return True
+    except ApiException as e:
+        print(f"Failed to scale: {e}")
+        return False
+
+if __name__ == '__main__':
+    load_kube_config()
+
+    print("=== CRASHLOOPING PODS ===")
+    crash_pods = check_crashlooping_pods()
+    for pod in crash_pods:
+        print(f"  {pod['namespace']}/{pod['name']}: {pod['restarts']} restarts, status={pod['status']}")
+
+    print("\n=== ALL PODS ===")
+    all_pods = get_pods_by_namespace('production')
+    print(json.dumps(all_pods, indent=2, default=str))
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 5: REST API Health Checker with Retry Logic
+────────────────────────────────────────────────────────────────────────────────
+
+#!/usr/bin/env python3
+"""
+api_healthcheck.py
+Purpose: Check API endpoints health with retry, timeout, and alerting
+"""
+
+import requests              # HTTP library (pip install requests)
+import time
+import json
+import logging
+from typing import Dict, Optional
+from dataclasses import dataclass, field  # Clean data classes
+from urllib.parse import urlparse
+
+@dataclass  # @dataclass → auto-generates __init__, __repr__, etc.
+class HealthCheckResult:
+    """Structured result from a single health check"""
+    url: str
+    status_code: Optional[int] = None
+    response_time_ms: float = 0.0
+    is_healthy: bool = False
+    error: Optional[str] = None
+    timestamp: str = field(default_factory=lambda: str(time.time()))
+    # default_factory → call this function to get default value (not shared instance)
+
+def check_endpoint(
+    url: str,
+    expected_status: int = 200,
+    timeout: int = 10,
+    max_retries: int = 3,
+    retry_delay: int = 5,
+    expected_body_contains: str = None
+) -> HealthCheckResult:
+    """
+    Check a single endpoint with retry logic.
+    Exponential backoff is the industry standard — built in here as linear for simplicity.
+    """
+    result = HealthCheckResult(url=url)
+
+    for attempt in range(max_retries):
+        # range(3) → 0, 1, 2 (3 attempts)
+        try:
+            start_time = time.perf_counter()
+            # perf_counter() → high-resolution timer (better than time.time() for intervals)
+
+            response = requests.get(
+                url,
+                timeout=timeout,
+                # timeout → raise exception if server doesn't respond in N seconds
+                headers={
+                    'User-Agent': 'HealthChecker/1.0',
+                    'Accept': 'application/json'
+                },
+                verify=True  # Verify SSL certificate (never set False in production!)
+            )
+
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            # * 1000 → convert seconds to milliseconds
+
+            result.status_code = response.status_code
+            result.response_time_ms = round(elapsed_ms, 2)
+
+            # Validate response
+            if response.status_code != expected_status:
+                result.error = f"Expected {expected_status}, got {response.status_code}"
+            elif expected_body_contains and expected_body_contains not in response.text:
+                result.error = f"Response missing expected content: {expected_body_contains}"
+            else:
+                result.is_healthy = True
+                break  # Success — exit retry loop
+
+        except requests.exceptions.Timeout:
+            result.error = f"Timeout after {timeout}s (attempt {attempt+1}/{max_retries})"
+        except requests.exceptions.SSLError as e:
+            result.error = f"SSL error: {e}"
+            break  # Don't retry SSL errors
+        except requests.exceptions.ConnectionError as e:
+            result.error = f"Connection failed: {e}"
+        except Exception as e:
+            result.error = f"Unexpected error: {e}"
+
+        if attempt < max_retries - 1:
+            # Don't sleep after the last attempt
+            time.sleep(retry_delay * (attempt + 1))
+            # * (attempt + 1) → increasing delay: 5s, 10s, 15s (linear backoff)
+
+    return result
+
+def check_all_endpoints(endpoints: list) -> Dict[str, HealthCheckResult]:
+    """Check multiple endpoints and return results dict"""
+    results = {}
+    for endpoint_config in endpoints:
+        url = endpoint_config['url']
+        print(f"Checking: {url}")
+        results[url] = check_endpoint(**endpoint_config)
+        # **dict → unpack dictionary as keyword arguments to function
+    return results
+
+# ─── USAGE ────────────────────────────────────────────────────────────────────
+if __name__ == '__main__':
+    ENDPOINTS = [
+        {'url': 'https://api.company.com/health', 'expected_status': 200,
+         'expected_body_contains': '"status":"ok"'},
+        {'url': 'https://api.company.com/v2/status', 'timeout': 5},
+        {'url': 'https://auth.company.com/ping', 'max_retries': 5},
+    ]
+
+    results = check_all_endpoints(ENDPOINTS)
+
+    all_healthy = True
+    for url, result in results.items():
+        status = "✅ OK" if result.is_healthy else "❌ FAIL"
+        print(f"{status} | {url} | {result.response_time_ms}ms | {result.error or ''}")
+        if not result.is_healthy:
+            all_healthy = False
+
+    exit(0 if all_healthy else 1)
+    # exit code 0 = success (useful for CI/CD pipelines that check exit codes)
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 6: Database Migration Script
+────────────────────────────────────────────────────────────────────────────────
+
+#!/usr/bin/env python3
+"""
+db_migration.py
+Purpose: Run database migrations safely with rollback support
+"""
+
+import pymysql          # pip install pymysql (or use psycopg2 for PostgreSQL)
+import hashlib          # For computing checksums of migration files
+import os
+from pathlib import Path
+from datetime import datetime
+
+class MigrationRunner:
+    """Handles database schema migrations"""
+
+    def __init__(self, host, port, user, password, database):
+        self.conn = pymysql.connect(
+            host=host, port=port, user=user,
+            password=password, database=database,
+            cursorclass=pymysql.cursors.DictCursor
+            # DictCursor → rows returned as dicts instead of tuples
+        )
+        self._create_migrations_table()
+
+    def _create_migrations_table(self):
+        """Create table to track which migrations have been run"""
+        with self.conn.cursor() as cursor:
+            # with cursor → auto-closes cursor when done
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    filename VARCHAR(255) NOT NULL UNIQUE,
+                    checksum VARCHAR(64) NOT NULL,
+                    applied_at DATETIME NOT NULL,
+                    execution_ms INT
+                )
+            """)
+        self.conn.commit()
+        # .commit() → save the transaction to the database
+
+    def get_applied_migrations(self) -> set:
+        """Return set of migration filenames that have already been applied"""
+        with self.conn.cursor() as cursor:
+            cursor.execute("SELECT filename FROM schema_migrations")
+            rows = cursor.fetchall()
+            # fetchall() → get all rows as a list of dicts
+        return {row['filename'] for row in rows}
+        # Set comprehension: {expression for item in iterable}
+        # Using a set allows O(1) lookup vs O(n) for list
+
+    def compute_checksum(self, content: str) -> str:
+        """Hash migration file to detect corruption or tampering"""
+        return hashlib.sha256(content.encode()).hexdigest()
+        # .encode() → convert string to bytes (hashlib needs bytes)
+        # .hexdigest() → return hash as hex string
+
+    def run_migration(self, filepath: Path) -> bool:
+        """Execute a single migration file"""
+        content = filepath.read_text(encoding='utf-8')
+        # Path.read_text() → read entire file as string
+
+        checksum = self.compute_checksum(content)
+        start = datetime.now()
+
+        try:
+            with self.conn.cursor() as cursor:
+                # Split by semicolon to handle multi-statement migrations
+                statements = [s.strip() for s in content.split(';') if s.strip()]
+                # List comprehension with filter: [x for x in list if condition]
+
+                for stmt in statements:
+                    cursor.execute(stmt)
+
+                # Record that this migration was applied
+                cursor.execute("""
+                    INSERT INTO schema_migrations
+                    (filename, checksum, applied_at, execution_ms)
+                    VALUES (%s, %s, %s, %s)
+                """,
+                (filepath.name, checksum, datetime.now(),
+                 int((datetime.now() - start).total_seconds() * 1000))
+                # %s → parameterized query (NEVER use f-strings for SQL — SQL injection!)
+                )
+
+            self.conn.commit()
+            print(f"✅ Applied: {filepath.name}")
+            return True
+
+        except Exception as e:
+            self.conn.rollback()
+            # rollback() → undo all changes since last commit
+            print(f"❌ Failed: {filepath.name}: {e}")
+            return False
+
+    def run_pending(self, migrations_dir: str) -> int:
+        """Find and run all pending migrations in order"""
+        applied = self.get_applied_migrations()
+        migrations_path = Path(migrations_dir)
+
+        # Get all .sql files, sorted by filename (001_create.sql, 002_alter.sql, etc.)
+        pending = sorted(
+            f for f in migrations_path.glob('*.sql')
+            if f.name not in applied
+            # Generator expression as filter: only unapplied migrations
+        )
+
+        if not pending:
+            print("No pending migrations")
+            return 0
+
+        print(f"Found {len(pending)} pending migration(s)")
+        success_count = 0
+        for migration_file in pending:
+            if self.run_migration(migration_file):
+                success_count += 1
+            else:
+                print("Stopping due to migration failure")
+                break  # Don't continue after a failure
+
+        return success_count
+
+    def close(self):
+        self.conn.close()
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 7: Parallel File Processor
+────────────────────────────────────────────────────────────────────────────────
+
+#!/usr/bin/env python3
+"""
+parallel_processor.py
+Purpose: Process thousands of files in parallel using multiprocessing
+Common in ETL pipelines, log processing, data transformation jobs
+"""
+
+from multiprocessing import Pool, cpu_count  # True parallelism (bypasses Python GIL)
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from pathlib import Path
+import time
+import json
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def process_single_file(filepath: str) -> dict:
+    """
+    Worker function: process one file.
+    Must be defined at module level for multiprocessing to pickle it.
+    (pickle = Python's object serialization for cross-process communication)
+    """
+    path = Path(filepath)
+    try:
+        content = path.read_text(encoding='utf-8')
+        # Simulate processing (replace with real logic: parse, transform, etc.)
+        lines = content.splitlines()
+        # .splitlines() → split on any line ending (\n, \r\n, \r)
+        word_count = sum(len(line.split()) for line in lines)
+        # sum() with generator → count total words across all lines
+
+        return {
+            'file': str(filepath),
+            'size_bytes': path.stat().st_size,
+            # .stat().st_size → file size in bytes
+            'lines': len(lines),
+            'words': word_count,
+            'status': 'success'
+        }
+    except Exception as e:
+        return {'file': str(filepath), 'status': 'error', 'error': str(e)}
+
+def process_files_parallel(file_list: list, workers: int = None) -> list:
+    """
+    Process files using a process pool — true parallelism for CPU-bound tasks.
+    ThreadPoolExecutor is better for I/O-bound tasks (network, disk).
+    ProcessPoolExecutor is better for CPU-bound tasks (computation).
+    """
+    workers = workers or min(cpu_count(), len(file_list))
+    # cpu_count() → number of CPU cores available
+    # min() → don't use more workers than files
+
+    results = []
+    completed = 0
+
+    logger.info(f"Processing {len(file_list)} files with {workers} workers")
+    start = time.perf_counter()
+
+    with ProcessPoolExecutor(max_workers=workers) as executor:
+        # Submit all jobs to the pool (returns Future objects)
+        future_to_file = {
+            executor.submit(process_single_file, f): f
+            for f in file_list
+            # Dict comprehension: {key: value for item in iterable}
+        }
+
+        for future in as_completed(future_to_file):
+            # as_completed → yield futures as they COMPLETE (not submission order)
+            file = future_to_file[future]
+            try:
+                result = future.result()
+                # .result() → get the return value, or re-raise any exception
+                results.append(result)
+            except Exception as e:
+                logger.error(f"File {file} generated exception: {e}")
+                results.append({'file': str(file), 'status': 'error', 'error': str(e)})
+
+            completed += 1
+            if completed % 100 == 0:
+                # Report progress every 100 files
+                logger.info(f"Progress: {completed}/{len(file_list)}")
+
+    elapsed = time.perf_counter() - start
+    logger.info(f"Processed {len(file_list)} files in {elapsed:.1f}s "
+                f"({len(file_list)/elapsed:.0f} files/sec)")
+
+    return results
+
+if __name__ == '__main__':
+    # Find all log files to process
+    log_dir = Path('/var/log')
+    files = [str(f) for f in log_dir.rglob('*.log') if f.is_file()]
+    # .rglob('*.log') → recursive glob: find pattern in all subdirectories
+
+    results = process_files_parallel(files)
+
+    # Summarize results
+    successful = [r for r in results if r['status'] == 'success']
+    failed = [r for r in results if r['status'] == 'error']
+    # List comprehension with filter
+
+    print(f"Processed: {len(successful)} success, {len(failed)} failed")
+    total_lines = sum(r.get('lines', 0) for r in successful)
+    print(f"Total lines processed: {total_lines:,}")
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPT 8: Infrastructure Cost Reporter (AWS)
+────────────────────────────────────────────────────────────────────────────────
+
+#!/usr/bin/env python3
+"""
+cost_reporter.py
+Purpose: Pull AWS costs, break down by service/team, generate reports
+"""
+
+import boto3
+from datetime import datetime, timedelta
+from collections import defaultdict
+import json
+
+def get_cost_by_service(days: int = 30) -> dict:
+    """Get AWS costs broken down by service for the last N days"""
+    ce = boto3.client('ce', region_name='us-east-1')
+    # ce = Cost Explorer client
+
+    end_date = datetime.today().strftime('%Y-%m-%d')
+    start_date = (datetime.today() - timedelta(days=days)).strftime('%Y-%m-%d')
+    # timedelta → represent a duration of time, used for date arithmetic
+
+    response = ce.get_cost_and_usage(
+        TimePeriod={'Start': start_date, 'End': end_date},
+        Granularity='MONTHLY',
+        # DAILY, MONTHLY, or HOURLY
+        Metrics=['BlendedCost'],
+        # BlendedCost → average rate across all instance families
+        GroupBy=[{'Type': 'DIMENSION', 'Key': 'SERVICE'}]
+        # GROUP BY service (like SQL GROUP BY)
+    )
+
+    costs = {}
+    for result in response['ResultsByTime']:
+        for group in result['Groups']:
+            service = group['Keys'][0]
+            amount = float(group['Metrics']['BlendedCost']['Amount'])
+            # Amount comes as string — convert to float for math
+            costs[service] = costs.get(service, 0) + amount
+            # .get(key, default) → add to existing or start from 0
+
+    # Sort by cost descending
+    return dict(sorted(costs.items(), key=lambda x: x[1], reverse=True))
+    # sorted() with key=lambda → custom sort function
+    # lambda x: x[1] → sort by value (cost amount)
+
+def get_cost_by_tag(tag_key: str = 'Team', days: int = 30) -> dict:
+    """Get costs broken down by a specific tag (e.g., Team, Environment)"""
+    ce = boto3.client('ce', region_name='us-east-1')
+    end_date = datetime.today().strftime('%Y-%m-%d')
+    start_date = (datetime.today() - timedelta(days=days)).strftime('%Y-%m-%d')
+
+    response = ce.get_cost_and_usage(
+        TimePeriod={'Start': start_date, 'End': end_date},
+        Granularity='MONTHLY',
+        Metrics=['BlendedCost'],
+        GroupBy=[{'Type': 'TAG', 'Key': tag_key}]
+        # Group by tag value — shows which team/project is spending what
+    )
+
+    costs = {}
+    for result in response['ResultsByTime']:
+        for group in result['Groups']:
+            tag_value = group['Keys'][0].replace(f'{tag_key}$', '')
+            # AWS prepends "TagKey$" to values — strip it
+            amount = float(group['Metrics']['BlendedCost']['Amount'])
+            costs[tag_value or 'untagged'] = costs.get(tag_value or 'untagged', 0) + amount
+
+    return dict(sorted(costs.items(), key=lambda x: x[1], reverse=True))
+
+def generate_cost_report(days: int = 30) -> str:
+    """Generate a cost breakdown report"""
+    print(f"Fetching AWS costs for last {days} days...")
+
+    service_costs = get_cost_by_service(days)
+    team_costs = get_cost_by_tag('Team', days)
+
+    total = sum(service_costs.values())
+
+    report_lines = [
+        f"AWS COST REPORT - Last {days} days",
+        f"Generated: {datetime.now()}",
+        f"Total Spend: ${total:,.2f}",
+        # :,.2f → comma-separated thousands, 2 decimal places
+        "",
+        "=== By Service ===",
+    ]
+
+    for service, cost in service_costs.items():
+        pct = cost / total * 100 if total > 0 else 0
+        report_lines.append(f"  {service:<40} ${cost:>10,.2f} ({pct:.1f}%)")
+        # :<40 → left-align in 40-char field
+        # :>10 → right-align in 10-char field
+
+    report_lines.extend(["", "=== By Team ==="])
+    for team, cost in team_costs.items():
+        report_lines.append(f"  {team:<30} ${cost:>10,.2f}")
+
+    return "\n".join(report_lines)
+
+if __name__ == '__main__':
+    print(generate_cost_report(30))
+
+
+────────────────────────────────────────────────────────────────────────────────
+SCRIPTS 9-25: Quick Reference (Condensed with Key Concepts)
+────────────────────────────────────────────────────────────────────────────────
+
+SCRIPT 9: Slack Bot for DevOps Alerts
+──────────────────────────────────────
+import requests, json
+
+def send_slack_message(webhook_url, message, color="good", fields=None):
+    """Send formatted alert to Slack channel"""
+    payload = {
+        "attachments": [{
+            "color": color,          # good=green, warning=yellow, danger=red
+            "text": message,
+            "fields": fields or [],  # or [] → use empty list if None
+            "footer": "DevOps Bot",
+            "ts": int(__import__('time').time())  # Unix timestamp for message time
+        }]
+    }
+    response = requests.post(webhook_url, json=payload)
+    # requests.post(url, json=...) → auto-serializes dict to JSON + sets Content-Type
+    return response.status_code == 200
+
+# Usage
+send_slack_message(
+    "https://hooks.slack.com/...",
+    "🚨 Production deployment failed!",
+    color="danger",
+    fields=[{"title": "Service", "value": "payment-api", "short": True}]
+)
+
+SCRIPT 10: YAML/JSON Config Validator
+──────────────────────────────────────
+import yaml, json, jsonschema, sys
+from pathlib import Path
+
+SCHEMA = {
+    "type": "object",
+    "required": ["service", "environment", "replicas"],
+    "properties": {
+        "service": {"type": "string"},
+        "environment": {"type": "string", "enum": ["dev", "staging", "prod"]},
+        "replicas": {"type": "integer", "minimum": 1, "maximum": 100}
+    }
+}
+# jsonschema validates structure of config files before deployment
+
+def validate_config(filepath: str) -> bool:
+    path = Path(filepath)
+    content = yaml.safe_load(path.read_text())
+    # yaml.safe_load → parse YAML safely (blocks code execution in YAML)
+    try:
+        jsonschema.validate(content, SCHEMA)
+        print(f"✅ Valid: {filepath}")
+        return True
+    except jsonschema.ValidationError as e:
+        print(f"❌ Invalid: {filepath}: {e.message}")
+        # e.message → human-readable description of what failed
+        return False
+
+for config_file in sys.argv[1:]:
+    # sys.argv[1:] → all command-line arguments except the script name
+    validate_config(config_file)
+
+SCRIPT 11: Git Repository Statistics
+──────────────────────────────────────
+import subprocess, json
+from collections import Counter
+
+def run_git(args: list) -> str:
+    """Run git command and return output"""
+    result = subprocess.run(
+        ['git'] + args,
+        capture_output=True,   # Capture stdout and stderr
+        text=True,             # Return strings not bytes
+        check=True             # Raise exception on non-zero exit code
+    )
+    return result.stdout.strip()
+    # .strip() → remove leading/trailing whitespace/newlines
+
+def get_commit_stats() -> dict:
+    log = run_git(['log', '--format=%an|%ae|%ad', '--date=short'])
+    # --format → custom log format: author name|email|date
+    authors = Counter()
+    months = Counter()
+    for line in log.splitlines():
+        parts = line.split('|')
+        if len(parts) == 3:
+            authors[parts[0]] += 1
+            months[parts[2][:7]] += 1  # YYYY-MM from YYYY-MM-DD
+    return {
+        'top_contributors': dict(authors.most_common(10)),
+        'commits_by_month': dict(sorted(months.items()))
+        # sorted() on dict items → sorts by key (month) alphabetically
+    }
+
+print(json.dumps(get_commit_stats(), indent=2))
+
+SCRIPT 12: Docker Image Build and Push
+──────────────────────────────────────
+import subprocess, sys, os
+from datetime import datetime
+
+def build_and_push(image_name: str, tag: str = None, registry: str = None):
+    tag = tag or datetime.now().strftime('%Y%m%d-%H%M%S')
+    # or → use left side if truthy, right side if left is falsy
+    full_tag = f"{registry}/{image_name}:{tag}" if registry else f"{image_name}:{tag}"
+
+    commands = [
+        ['docker', 'build', '-t', full_tag, '.'],
+        ['docker', 'push', full_tag],
+    ]
+
+    for cmd in commands:
+        print(f"Running: {' '.join(cmd)}")
+        result = subprocess.run(cmd, check=True)
+        # subprocess.run → execute shell command; check=True raises on failure
+
+    return full_tag
+
+SCRIPT 13: Prometheus Metrics Exporter
+──────────────────────────────────────
+from prometheus_client import start_http_server, Gauge, Counter, Histogram
+# pip install prometheus_client
+import time, psutil
+
+# Define metrics
+cpu_gauge = Gauge('system_cpu_percent', 'CPU usage percent')
+# Gauge → can go up or down (like CPU usage)
+mem_gauge = Gauge('system_memory_percent', 'Memory usage percent')
+request_count = Counter('app_requests_total', 'Total requests', ['status', 'endpoint'])
+# Counter → only goes up (like request count)
+# ['status', 'endpoint'] → labels for dimensionality
+response_time = Histogram('response_time_seconds', 'Response time', buckets=[.1,.25,.5,1,2.5])
+# Histogram → tracks distribution (good for latency percentiles)
+
+def collect_metrics():
+    """Update metric values from system"""
+    while True:
+        cpu_gauge.set(psutil.cpu_percent(interval=1))
+        mem_gauge.set(psutil.virtual_memory().percent)
+        time.sleep(15)
+
+if __name__ == '__main__':
+    start_http_server(8000)  # Expose /metrics endpoint on port 8000
+    print("Metrics server running on :8000")
+    collect_metrics()
+
+SCRIPT 14: SSH File Distributor
+──────────────────────────────────
+import paramiko, concurrent.futures, os
+# pip install paramiko
+
+def deploy_file(host: str, local_path: str, remote_path: str,
+                username: str = 'deploy', key_path: str = '~/.ssh/id_rsa') -> dict:
+    """Copy a file to a remote server via SSH"""
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    # AutoAddPolicy → automatically trust new host keys (ok for automation)
+    try:
+        client.connect(host, username=username,
+                      key_filename=os.path.expanduser(key_path))
+        # os.path.expanduser → expand ~ to actual home directory
+        sftp = client.open_sftp()
+        # SFTP = SSH File Transfer Protocol
+        sftp.put(local_path, remote_path)
+        # sftp.put(local, remote) → upload file
+        sftp.close()
+        return {'host': host, 'status': 'success'}
+    except Exception as e:
+        return {'host': host, 'status': 'error', 'error': str(e)}
+    finally:
+        client.close()
+        # finally → always runs, even if exception occurred (cleanup)
+
+SCRIPT 15: CI/CD Pipeline Trigger (GitHub Actions)
+────────────────────────────────────────────────────
+import requests, os, json
+
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
+# os.environ.get() → safely read env var, returns None if not set
+REPO = 'company/myapp'
+
+def trigger_workflow(workflow_id: str, branch: str = 'main', inputs: dict = None) -> bool:
+    """Trigger a GitHub Actions workflow"""
+    url = f"https://api.github.com/repos/{REPO}/actions/workflows/{workflow_id}/dispatches"
+    headers = {
+        'Authorization': f'Bearer {GITHUB_TOKEN}',
+        'Accept': 'application/vnd.github.v3+json'
+        # Versioned API header — GitHub best practice
+    }
+    data = {'ref': branch, 'inputs': inputs or {}}
+    response = requests.post(url, headers=headers, json=data)
+    # 204 No Content = success for this GitHub endpoint
+    return response.status_code == 204
+
+def get_workflow_runs(workflow_id: str) -> list:
+    url = f"https://api.github.com/repos/{REPO}/actions/workflows/{workflow_id}/runs"
+    headers = {'Authorization': f'Bearer {GITHUB_TOKEN}'}
+    return requests.get(url, headers=headers).json().get('workflow_runs', [])
+
+SCRIPT 16: Redis Cache Manager
+──────────────────────────────────
+import redis, json, time
+from typing import Any, Optional
+
+class CacheManager:
+    """DevOps Redis cache operations wrapper"""
+    def __init__(self, host='localhost', port=6379, db=0):
+        self.redis = redis.Redis(host=host, port=port, db=db,
+                                 decode_responses=True)
+        # decode_responses=True → auto-decode bytes to strings
+
+    def get(self, key: str) -> Optional[Any]:
+        value = self.redis.get(key)
+        return json.loads(value) if value else None
+        # Ternary: json.loads(value) if value is not None else None
+
+    def set(self, key: str, value: Any, ttl_seconds: int = 3600) -> bool:
+        serialized = json.dumps(value)
+        return self.redis.setex(key, ttl_seconds, serialized)
+        # setex → SET with EXpiry: key expires after ttl_seconds
+
+    def delete_pattern(self, pattern: str) -> int:
+        """Delete all keys matching a pattern — cache invalidation"""
+        keys = self.redis.keys(pattern)
+        # redis.keys('prefix:*') → find all matching keys (use SCAN in production!)
+        if keys:
+            return self.redis.delete(*keys)
+            # *keys → unpack list as separate arguments
+        return 0
+
+    def get_stats(self) -> dict:
+        info = self.redis.info()
+        # .info() → returns comprehensive Redis server statistics
+        return {
+            'hit_rate': info.get('keyspace_hits', 0) /
+                       max(info.get('keyspace_hits', 0) + info.get('keyspace_misses', 0), 1),
+            'memory_used': info.get('used_memory_human'),
+            'connected_clients': info.get('connected_clients')
+        }
+
+SCRIPT 17: Log Aggregator and Shipper
+──────────────────────────────────────
+import json, time
+from pathlib import Path
+from elasticsearch import Elasticsearch  # pip install elasticsearch
+
+class LogShipper:
+    """Ship logs from files to Elasticsearch (ELK stack)"""
+    def __init__(self, es_host='localhost', es_port=9200):
+        self.es = Elasticsearch([{'host': es_host, 'port': es_port}])
+        self.cursor_file = '/var/lib/logshipper/cursor.json'
+        # cursor = position in log file we've read up to
+
+    def get_cursor(self, filepath: str) -> int:
+        """Remember where we left off in a log file"""
+        try:
+            cursors = json.loads(Path(self.cursor_file).read_text())
+            return cursors.get(filepath, 0)  # 0 = start of file
+        except (FileNotFoundError, json.JSONDecodeError):
+            return 0
+
+    def save_cursor(self, filepath: str, position: int):
+        """Save current position so we don't re-ship old logs"""
+        try:
+            cursors = json.loads(Path(self.cursor_file).read_text())
+        except:
+            cursors = {}
+        cursors[filepath] = position
+        Path(self.cursor_file).parent.mkdir(parents=True, exist_ok=True)
+        # exist_ok=True → don't fail if directory already exists
+        Path(self.cursor_file).write_text(json.dumps(cursors))
+
+    def ship_logs(self, filepath: str, index: str):
+        position = self.get_cursor(filepath)
+        with open(filepath, 'r') as f:
+            f.seek(position)  # Jump to last known position
+            for line in f:
+                try:
+                    doc = json.loads(line)   # Parse JSON log line
+                    self.es.index(index=index, body=doc)
+                    # .index() → write document to Elasticsearch
+                except json.JSONDecodeError:
+                    doc = {'message': line.strip(), 'timestamp': time.time()}
+                    self.es.index(index=index, body=doc)
+            self.save_cursor(filepath, f.tell())
+            # f.tell() → current byte position in file
+
+SCRIPT 18: Secret Rotation Script (Vault)
+──────────────────────────────────────────
+import hvac, boto3, os  # pip install hvac
+# hvac = HashiCorp Vault client
+
+def rotate_database_password(vault_path: str, db_host: str):
+    """Rotate DB password in Vault and update RDS"""
+    # Connect to Vault using token from environment
+    vault = hvac.Client(url=os.environ['VAULT_ADDR'],
+                        token=os.environ['VAULT_TOKEN'])
+    assert vault.is_authenticated()  # Verify connection works
+    # assert → raises AssertionError if condition is False
+
+    # Generate new password
+    import secrets, string
+    alphabet = string.ascii_letters + string.digits + '!@#$%'
+    new_password = ''.join(secrets.choice(alphabet) for _ in range(32))
+    # secrets.choice → cryptographically secure random selection (not random.choice!)
+    # ''.join(iterable) → concatenate all chars with empty string separator
+
+    # Update in Vault (KV v2 secret engine)
+    vault.secrets.kv.v2.create_or_update_secret(
+        path=vault_path,
+        secret={'password': new_password, 'rotated_at': str(__import__('datetime').datetime.now())}
+    )
+    print(f"Password rotated in Vault at path: {vault_path}")
+
+    # Update in AWS RDS (if using RDS)
+    rds = boto3.client('rds')
+    # rds.modify_db_instance(DBInstanceIdentifier='...', MasterUserPassword=new_password)
+    return new_password
+
+SCRIPT 19: Container Resource Usage Collector
+──────────────────────────────────────────────
+import docker, json, time  # pip install docker
+
+client = docker.from_env()
+# docker.from_env() → connect to Docker using environment/socket
+
+def get_container_stats() -> list:
+    stats_list = []
+    for container in client.containers.list():
+        # .containers.list() → all running containers
+        stats = container.stats(stream=False)
+        # stream=False → get one snapshot instead of continuous stream
+
+        # CPU calculation
+        cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
+                    stats['precpu_stats']['cpu_usage']['total_usage']
+        # Delta = difference between current and previous measurement
+        system_delta = stats['cpu_stats']['system_cpu_usage'] - \
+                       stats['precpu_stats']['system_cpu_usage']
+        cpu_pct = (cpu_delta / system_delta) * 100 if system_delta > 0 else 0
+
+        # Memory calculation
+        mem_used = stats['memory_stats']['usage']
+        mem_limit = stats['memory_stats']['limit']
+        mem_pct = (mem_used / mem_limit) * 100 if mem_limit > 0 else 0
+
+        stats_list.append({
+            'name': container.name,
+            'id': container.short_id,   # First 12 chars of container ID
+            'cpu_percent': round(cpu_pct, 2),
+            'mem_percent': round(mem_pct, 2),
+            'mem_used_mb': round(mem_used / 1024 / 1024, 1)
+        })
+    return stats_list
+
+print(json.dumps(get_container_stats(), indent=2))
+
+SCRIPT 20: Automated Runbook Executor
+──────────────────────────────────────
+import yaml, subprocess, sys, json
+from datetime import datetime
+
+class RunbookExecutor:
+    """Execute standardized runbooks — codified incident response"""
+
+    def __init__(self, runbook_file: str):
+        with open(runbook_file) as f:
+            self.runbook = yaml.safe_load(f)
+        # YAML runbook defines steps declaratively
+        self.results = []
+
+    def execute_step(self, step: dict) -> dict:
+        """Execute a single runbook step"""
+        name = step['name']
+        command = step['command']
+        on_failure = step.get('on_failure', 'abort')  # abort or continue
+
+        print(f"Executing: {name}")
+        print(f"Command: {command}")
+
+        result = subprocess.run(command, shell=True,
+                               capture_output=True, text=True, timeout=300)
+        # shell=True → run through shell (allows pipes, redirects)
+        # timeout=300 → fail if step takes more than 5 minutes
+
+        step_result = {
+            'name': name, 'command': command,
+            'exit_code': result.returncode,
+            'stdout': result.stdout[:1000],  # [:1000] → first 1000 chars
+            'timestamp': str(datetime.now())
+        }
+
+        if result.returncode != 0:
+            step_result['status'] = 'FAILED'
+            if on_failure == 'abort':
+                raise RuntimeError(f"Step failed: {name}\n{result.stderr}")
+        else:
+            step_result['status'] = 'SUCCESS'
+
+        return step_result
+
+    def run(self) -> bool:
+        """Execute all runbook steps and generate audit log"""
+        print(f"Starting runbook: {self.runbook['name']}")
+        success = True
+        for step in self.runbook.get('steps', []):
+            try:
+                result = self.execute_step(step)
+                self.results.append(result)
+            except RuntimeError as e:
+                print(f"ABORT: {e}")
+                success = False
+                break
+        self._save_audit_log()
+        return success
+
+    def _save_audit_log(self):
+        log_file = f"/var/log/runbooks/{self.runbook['name']}_{int(datetime.now().timestamp())}.json"
+        with open(log_file, 'w') as f:
+            json.dump({'runbook': self.runbook['name'],
+                       'results': self.results}, f, indent=2)
+
+SCRIPT 21: DNS Record Manager (Route53)
+──────────────────────────────────────────
+import boto3
+
+def upsert_dns_record(hosted_zone_id: str, name: str,
+                      record_type: str, value: str, ttl: int = 300):
+    """Create or update a DNS record in Route53"""
+    route53 = boto3.client('route53')
+
+    change_batch = {
+        'Changes': [{
+            'Action': 'UPSERT',  # UPSERT = create if not exists, update if exists
+            'ResourceRecordSet': {
+                'Name': name,
+                'Type': record_type,   # A, CNAME, MX, TXT, etc.
+                'TTL': ttl,
+                'ResourceRecords': [{'Value': value}]
+            }
+        }]
+    }
+
+    response = route53.change_resource_record_sets(
+        HostedZoneId=hosted_zone_id,
+        ChangeBatch=change_batch
+    )
+
+    change_id = response['ChangeInfo']['Id']
+    print(f"DNS change submitted: {change_id}")
+
+    # Wait for the change to propagate
+    waiter = route53.get_waiter('resource_record_sets_changed')
+    # waiter → polls AWS until a condition is met (built into boto3)
+    waiter.wait(Id=change_id)
+    print("DNS change propagated successfully")
+
+SCRIPT 22: Terraform Plan Parser
+──────────────────────────────────
+import json, subprocess, sys
+
+def get_terraform_plan(working_dir: str) -> dict:
+    """Parse Terraform plan output into structured data"""
+    subprocess.run(['terraform', 'plan', '-out=tfplan'],
+                  cwd=working_dir, check=True)
+    # cwd=working_dir → set working directory for the subprocess
+
+    result = subprocess.run(
+        ['terraform', 'show', '-json', 'tfplan'],
+        cwd=working_dir, capture_output=True, text=True, check=True
+    )
+    return json.loads(result.stdout)
+
+def summarize_plan(plan: dict) -> dict:
+    """Summarize what Terraform will do"""
+    changes = plan.get('resource_changes', [])
+    # .get() returns [] if key absent — avoids KeyError
+
+    summary = {'create': [], 'update': [], 'delete': [], 'no-op': []}
+    for resource in changes:
+        actions = resource['change']['actions']
+        # actions is a list like ['create'], ['update'], ['delete'], ['no-op']
+        resource_info = {
+            'type': resource['type'],
+            'name': resource['name'],
+            'address': resource['address']
+        }
+        if 'delete' in actions:
+            summary['delete'].append(resource_info)  # Flag deletes as dangerous
+        elif 'create' in actions:
+            summary['create'].append(resource_info)
+        elif 'update' in actions:
+            summary['update'].append(resource_info)
+
+    return summary
+
+SCRIPT 23: Automated Incident Detector
+──────────────────────────────────────
+import requests, time, json
+from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class Alert:
+    service: str
+    severity: str    # critical, warning, info
+    message: str
+    timestamp: float = 0.0
+
+class IncidentDetector:
+    """Poll metrics and detect incidents automatically"""
+    def __init__(self, prometheus_url: str):
+        self.prom_url = prometheus_url
+        self.active_alerts: List[Alert] = []
+
+    def query(self, promql: str) -> list:
+        """Execute a PromQL query against Prometheus"""
+        response = requests.get(
+            f"{self.prom_url}/api/v1/query",
+            params={'query': promql}
+            # params → adds ?query=... to URL automatically
+        )
+        response.raise_for_status()
+        # raise_for_status() → raise exception if status code is 4xx or 5xx
+        return response.json()['data']['result']
+
+    def check_error_rate(self, service: str, threshold: float = 0.05) -> bool:
+        """Check if error rate exceeds threshold (5% default)"""
+        promql = f'rate(http_requests_total{{service="{service}",status=~"5.."}}[5m]) / rate(http_requests_total{{service="{service}"}}[5m])'
+        # PromQL: rate of 5xx errors divided by total rate
+        results = self.query(promql)
+        if results:
+            value = float(results[0]['value'][1])
+            # value is [timestamp, value_string] — take index 1
+            if value > threshold:
+                self.active_alerts.append(Alert(service=service,
+                    severity='critical', message=f"Error rate: {value:.1%}",
+                    timestamp=time.time()))
+                return True
+        return False
+
+SCRIPT 24: Multi-Cloud Storage Manager
+──────────────────────────────────────
+import boto3, os
+from google.cloud import storage as gcs  # pip install google-cloud-storage
+from azure.storage.blob import BlobServiceClient  # pip install azure-storage-blob
+from typing import Protocol  # Type-safe interfaces in Python
+
+class CloudStorage(Protocol):
+    """Protocol = interface definition (structural typing)"""
+    def upload(self, local_path: str, remote_path: str) -> bool: ...
+    def download(self, remote_path: str, local_path: str) -> bool: ...
+    def list_files(self, prefix: str) -> list: ...
+
+class S3Storage:
+    def __init__(self, bucket: str, region: str = 'us-east-1'):
+        self.s3 = boto3.client('s3', region_name=region)
+        self.bucket = bucket
+
+    def upload(self, local_path: str, remote_path: str) -> bool:
+        try:
+            self.s3.upload_file(local_path, self.bucket, remote_path)
+            return True
+        except Exception as e:
+            print(f"S3 upload failed: {e}"); return False
+
+    def list_files(self, prefix: str = '') -> list:
+        paginator = self.s3.get_paginator('list_objects_v2')
+        # paginator → auto-handle multi-page S3 responses (>1000 objects)
+        pages = paginator.paginate(Bucket=self.bucket, Prefix=prefix)
+        return [obj['Key'] for page in pages for obj in page.get('Contents', [])]
+        # Nested list comprehension: flatten pages → objects → keys
+
+class GCSStorage:
+    def __init__(self, bucket: str):
+        self.client = gcs.Client()
+        self.bucket = self.client.bucket(bucket)
+
+    def upload(self, local_path: str, remote_path: str) -> bool:
+        try:
+            blob = self.bucket.blob(remote_path)
+            blob.upload_from_filename(local_path)
+            return True
+        except Exception as e:
+            print(f"GCS upload failed: {e}"); return False
+
+SCRIPT 25: Full Stack Deployment Validator
+──────────────────────────────────────────
+import requests, subprocess, time, json
+
+class DeploymentValidator:
+    """Validate a deployment is healthy across all system layers"""
+
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.checks = []
+
+    def add_result(self, name: str, passed: bool, details: str = ''):
+        self.checks.append({'name': name, 'passed': passed, 'details': details})
+
+    def check_http_health(self):
+        """Layer 1: Is the application responding?"""
+        try:
+            r = requests.get(f"{self.base_url}/health", timeout=10)
+            data = r.json()
+            self.add_result('HTTP Health', r.status_code == 200 and data.get('status') == 'ok',
+                           f"Status: {r.status_code}, Response: {data}")
+        except Exception as e:
+            self.add_result('HTTP Health', False, str(e))
+
+    def check_database_connectivity(self):
+        """Layer 2: Can the app reach the database?"""
+        try:
+            r = requests.get(f"{self.base_url}/health/db", timeout=15)
+            self.add_result('DB Connectivity', r.status_code == 200)
+        except Exception as e:
+            self.add_result('DB Connectivity', False, str(e))
+
+    def check_response_time(self, max_ms: int = 500):
+        """Layer 3: Is performance acceptable?"""
+        import time
+        start = time.perf_counter()
+        try:
+            requests.get(f"{self.base_url}/api/v1/ping", timeout=10)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            self.add_result('Response Time', elapsed_ms < max_ms,
+                           f"{elapsed_ms:.0f}ms (max: {max_ms}ms)")
+        except Exception as e:
+            self.add_result('Response Time', False, str(e))
+
+    def validate(self) -> bool:
+        """Run all checks and return overall pass/fail"""
+        self.check_http_health()
+        self.check_database_connectivity()
+        self.check_response_time()
+
+        all_passed = all(c['passed'] for c in self.checks)
+        # all() → True only if every element is truthy
+
+        print(f"\n{'='*50}")
+        print(f"DEPLOYMENT VALIDATION: {'PASSED ✅' if all_passed else 'FAILED ❌'}")
+        print(f"{'='*50}")
+        for check in self.checks:
+            status = "✅" if check['passed'] else "❌"
+            print(f"{status} {check['name']}: {check['details']}")
+
+        return all_passed
+
+# Usage
+if __name__ == '__main__':
+    validator = DeploymentValidator('https://api.company.com')
+    success = validator.validate()
+    exit(0 if success else 1)
+
+
+================================================================================
+                      QUICK REFERENCE: KEY CONCEPTS SUMMARY
+================================================================================
+
+SHELL SCRIPTING FUNDAMENTALS
+────────────────────────────
+  set -euo pipefail     Always add this! Strict error handling
+  $()                   Command substitution
+  $((...))              Arithmetic
+  ${var:-default}       Default value if unset
+  [[ ]]                 Modern test (use over [ ])
+  declare -a array      Array declaration
+  "${array[@]}"         Expand all array elements safely
+  $?                    Exit code of last command
+  $0, $1, $#            Script name, first arg, arg count
+  trap cmd ERR          Run cmd on error (for rollback!)
+  &                     Background execution
+  wait                  Wait for all background jobs
+  2>/dev/null           Discard errors
+  &>/dev/null           Discard all output
+
+PYTHON SCRIPTING FUNDAMENTALS
+──────────────────────────────
+  if __name__ == '__main__':  Only run when executed directly
+  logging                     Use over print() in production
+  argparse                    Parse command-line arguments
+  subprocess.run(check=True)  Run shell commands safely
+  with open() as f:           Context manager (auto-close files)
+  try/except/finally          Exception handling
+  @dataclass                  Clean data classes
+  typing hints                Makes code self-documenting
+  f-strings                   f"Hello {name}" (Python 3.6+)
+  list comprehensions         [x for x in items if cond]
+  dict.get(key, default)      Safe dict access
+  *.most_common(n)            Counter's top-N method
+  yield / generators          Memory-efficient iteration
+  multiprocessing.Pool        True parallelism (CPU-bound)
+  ThreadPoolExecutor          Parallelism for I/O-bound tasks
+  pathlib.Path                Modern file path handling
+
+LINUX PERMISSION QUICK REFERENCE
+──────────────────────────────────
+  chmod 777  rwxrwxrwx  (dangerous! everyone full access)
+  chmod 755  rwxr-xr-x  (standard for executables/dirs)
+  chmod 644  rw-r--r--  (standard for files)
+  chmod 600  rw-------  (secrets, SSH keys)
+  chmod 700  rwx------  (personal directories)
+
+COMMON FAANG INTERVIEW TOPICS
+──────────────────────────────
+  - Write a script to find/kill processes using >80% CPU
+  - Monitor disk usage and alert when threshold exceeded
+  - Parse log files and extract error rates
+  - Deploy an application with rollback capability
+  - Check SSL certificate expiry for multiple domains
+  - Write a backup script with rotation policy
+  - Monitor Kubernetes pods for crash loops
+  - Implement a health check that a load balancer can use
+  - Rotate secrets/credentials automatically
+  - Parse JSON API responses and process the data
+
+================================================================================
+                    END OF DEVOPS SCRIPTING GUIDE
+                    Happy Learning! Practice daily.
+================================================================================
