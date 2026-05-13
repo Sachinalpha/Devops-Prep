@@ -1,0 +1,45 @@
+Recommended Learning Order For YOU
+
+Since you completed resource creation:
+
+Learn NEXT in this order:
+Variables
+Locals
+Outputs
+Functions
+count
+for_each
+State management
+Remote backend in Azure
+Modules
+Azure networking
+CI/CD
+AKS basics
+Best Strategy to Reach 2-Year Level Faster
+
+For every topic:
+
+Do This:
+Learn concept
+Build mini project
+Push to GitHub
+Write README
+Repeat with improvements
+
+Your GitHub becomes your experience proof.
+
+One Important Thing
+
+Terraform alone is usually NOT enough.
+
+For Azure DevOps/Terraform roles, also learn:
+
+Linux basics
+Git
+Docker basics
+CI/CD
+Networking basics
+YAML pipelines
+Kubernetes basics (later)
+
+Those together make you much stronger in interviews.
