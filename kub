@@ -1,0 +1,522 @@
+================================================================
+KUBERNETES LEARNING ROADMAP
+For DevOps Engineers (1 Year Experience)
+================================================================
+
+YOUR CURRENT LEVEL:
+  Azure DevOps pipelines   - done
+  Terraform                - done
+  Docker                   - done
+  AKS basics               - done
+  kubectl basic commands   - done
+
+================================================================
+WEEK 1 - CORE OBJECTS DEEP DIVE
+================================================================
+
+Day 1 - Pods
+  what is a pod
+  single container pod
+  multi container pod
+  pod lifecycle
+  kubectl run, get, describe, delete
+
+Day 2 - Deployments
+  what is deployment
+  create deployment
+  scale deployment
+  update deployment
+  kubectl rollout
+
+Day 3 - Services
+  ClusterIP
+  NodePort
+  LoadBalancer
+  when to use which
+
+Day 4 - ConfigMap and Secrets
+  create configmap
+  use in pod as env variable
+  use as volume mount
+  create secret
+  base64 encoding
+
+Day 5 - Namespaces
+  create namespace
+  deploy in namespace
+  switch namespace
+  resource isolation
+
+Weekend - Practice
+  deploy a full app with:
+  deployment + service + configmap + secret
+  in a custom namespace
+
+================================================================
+WEEK 2 - STORAGE AND NETWORKING
+================================================================
+
+Day 1 - Storage
+  PersistentVolume
+  PersistentVolumeClaim
+  StorageClass
+  dynamic provisioning
+
+Day 2 - Networking basics
+  how pods communicate
+  DNS in kubernetes
+  kube-proxy
+  CNI plugins
+
+Day 3 - Ingress
+  what is ingress
+  ingress controller
+  nginx ingress
+  path based routing
+  host based routing
+
+Day 4 - Network Policies
+  restrict traffic between pods
+  allow specific pods only
+  deny all default policy
+
+Day 5 - Health Checks
+  liveness probe
+  readiness probe
+  startup probe
+  httpGet vs exec vs tcpSocket
+
+Weekend - Practice
+  deploy app with:
+  PVC for storage
+  ingress for routing
+  network policy
+  all probes configured
+
+================================================================
+WEEK 3 - SCALING AND UPDATES
+================================================================
+
+Day 1 - Manual Scaling
+  kubectl scale
+  replica sets
+  how deployment manages replicas
+
+Day 2 - HPA
+  horizontal pod autoscaler
+  CPU based scaling
+  memory based scaling
+  custom metrics scaling
+
+Day 3 - Rolling Updates
+  maxSurge
+  maxUnavailable
+  update strategy
+  pause and resume rollout
+
+Day 4 - Rollback
+  rollout history
+  rollback to previous version
+  rollback to specific revision
+
+Day 5 - Blue Green and Canary
+  blue green deployment
+  canary deployment
+  traffic splitting
+
+Weekend - Practice
+  deploy app
+  simulate load
+  watch HPA scale up
+  do rolling update
+  rollback
+
+================================================================
+WEEK 4 - RBAC AND SECURITY
+================================================================
+
+Day 1 - Service Accounts
+  what is service account
+  default service account
+  create custom service account
+  assign to pod
+
+Day 2 - Roles and ClusterRoles
+  Role vs ClusterRole
+  create role
+  define permissions
+  verbs: get list watch create delete
+
+Day 3 - RoleBindings
+  bind role to user
+  bind role to service account
+  ClusterRoleBinding
+  test permissions
+
+Day 4 - Resource Management
+  requests and limits
+  LimitRange
+  ResourceQuota per namespace
+
+Day 5 - Pod Security
+  security context
+  run as non root
+  read only filesystem
+  privilege escalation
+
+Weekend - Practice
+  create service account
+  create role with limited permissions
+  bind to service account
+  set resource limits on all pods
+
+================================================================
+WEEK 5 - ADVANCED WORKLOADS
+================================================================
+
+Day 1 - StatefulSets
+  vs deployment
+  stable network identity
+  ordered deployment
+  use cases: databases, kafka
+
+Day 2 - DaemonSets
+  runs on every node
+  use cases: logging, monitoring
+  node selector with daemonset
+
+Day 3 - Jobs and CronJobs
+  one time tasks
+  batch processing
+  scheduled jobs
+  job parallelism
+
+Day 4 - Init Containers
+  run before main container
+  use cases: database migration
+  wait for dependency
+
+Day 5 - Taints and Tolerations
+  taint a node
+  add toleration to pod
+  node affinity
+  pod affinity and anti affinity
+
+Weekend - Practice
+  deploy postgres with statefulset
+  deploy logging agent with daemonset
+  create cronjob for backup
+
+================================================================
+WEEK 6 - HELM
+================================================================
+
+Day 1 - What is Helm
+  package manager for k8s
+  charts, values, templates
+  helm vs kubectl apply
+
+Day 2 - Install and use charts
+  helm install
+  helm upgrade
+  helm rollback
+  helm uninstall
+  artifact hub
+
+Day 3 - Create your own chart
+  helm create
+  chart structure
+  templates
+  values.yaml
+
+Day 4 - Helm advanced
+  conditionals in templates
+  loops in templates
+  named templates
+  chart dependencies
+
+Day 5 - Deploy real app with Helm
+  create helm chart for your app
+  deploy to dev namespace
+  upgrade to new version
+  rollback
+
+Weekend - Practice
+  install nginx ingress controller with helm
+  install prometheus with helm
+  deploy your own app with helm chart
+
+================================================================
+WEEK 7 - MONITORING AND LOGGING
+================================================================
+
+Day 1 - Metrics Server
+  install metrics server
+  kubectl top pods
+  kubectl top nodes
+
+Day 2 - Prometheus
+  install with helm
+  scrape metrics
+  PromQL basics
+  alert rules
+
+Day 3 - Grafana
+  connect to prometheus
+  import dashboards
+  create custom dashboard
+  set up alerts
+
+Day 4 - Logging with Loki
+  install loki stack
+  collect logs from pods
+  query logs in grafana
+  filter by namespace, pod
+
+Day 5 - Azure Monitor for AKS
+  enable container insights
+  view logs in Azure Portal
+  set up alerts in Azure
+
+Weekend - Practice
+  full monitoring stack running
+  dashboard showing pod CPU memory
+  alerts configured
+  logs queryable
+
+================================================================
+WEEK 8 - AKS PRODUCTION
+================================================================
+
+Day 1 - AKS Advanced networking
+  Azure CNI vs kubenet
+  private cluster
+  internal load balancer
+  application gateway ingress
+
+Day 2 - AKS + ACR
+  attach ACR to AKS
+  pull images from ACR
+  managed identity for ACR
+
+Day 3 - AKS + Key Vault
+  CSI driver for Key Vault
+  sync secrets to K8s secrets
+  auto rotate secrets
+
+Day 4 - AKS Upgrades
+  node pool upgrade
+  control plane upgrade
+  zero downtime upgrade
+  maintenance windows
+
+Day 5 - AKS Cost optimization
+  spot node pools
+  cluster autoscaler
+  right sizing
+  reserved instances
+
+Weekend - Practice
+  full production grade AKS setup
+  ACR integration
+  Key Vault secrets
+  monitoring enabled
+  autoscaling configured
+
+================================================================
+WEEK 9-10 - CKA EXAM PREP
+================================================================
+
+Day 1-3 - Practice killer.sh
+  exam simulator
+  time yourself
+  2 hours 17 questions
+
+Day 4-5 - Weak areas
+  identify weak topics
+  practice those specifically
+
+Day 6-7 - Mock exam
+  full mock exam
+  review mistakes
+
+Register exam:
+  training.linuxfoundation.org
+  CKA exam $395
+  includes 2 attempts
+  killer.sh included
+
+================================================================
+DAILY PRACTICE TOOLS
+================================================================
+
+Minikube     - local cluster on laptop
+Killercoda   - free online labs
+killer.sh    - CKA exam simulator
+k9s          - terminal UI for kubernetes
+lens         - GUI for kubernetes
+
+================================================================
+BEST RESOURCES
+================================================================
+
+1. TechWorld with Nana - YouTube  (free, best explanations)
+2. KodeKloud - hands on labs      (free tier available)
+3. kubernetes.io/docs             (official, always accurate)
+4. killer.sh                      (CKA practice)
+5. Killercoda.com                 (free online labs)
+
+================================================================
+KUBECTL COMMANDS CHEAT SHEET
+================================================================
+
+PODS:
+  kubectl get pods
+  kubectl get pods -o wide
+  kubectl get pods -n namespace
+  kubectl describe pod pod-name
+  kubectl logs pod-name
+  kubectl logs -f pod-name
+  kubectl exec -it pod-name -- bash
+  kubectl delete pod pod-name
+
+DEPLOYMENTS:
+  kubectl get deployments
+  kubectl scale deployment myapp --replicas=5
+  kubectl set image deployment/myapp myapp=myapp:2.0
+  kubectl rollout status deployment/myapp
+  kubectl rollout history deployment/myapp
+  kubectl rollout undo deployment/myapp
+
+SERVICES:
+  kubectl get services
+  kubectl get svc
+  kubectl describe service myapp-service
+
+CONFIGMAP AND SECRETS:
+  kubectl get configmaps
+  kubectl get secrets
+  kubectl create configmap my-config --from-literal=key=value
+  kubectl create secret generic my-secret --from-literal=password=secret
+
+NAMESPACE:
+  kubectl create namespace dev
+  kubectl get all -n dev
+  kubectl config set-context --current --namespace=dev
+
+NODES:
+  kubectl get nodes
+  kubectl top nodes
+  kubectl top pods
+  kubectl describe node node-name
+
+APPLY AND DELETE:
+  kubectl apply -f file.yaml
+  kubectl delete -f file.yaml
+  kubectl apply -f ./folder/
+
+================================================================
+KUBERNETES OBJECTS CHEAT SHEET
+================================================================
+
+Pod:
+  smallest unit
+  one or more containers
+  shared network and storage
+
+Deployment:
+  manages pods
+  rolling updates
+  rollback
+  desired state
+
+Service:
+  exposes pods
+  load balancing
+  stable IP and DNS
+
+ConfigMap:
+  non-sensitive config
+  env variables or files
+
+Secret:
+  sensitive data
+  base64 encoded
+  passwords, tokens, keys
+
+Namespace:
+  logical separation
+  dev, staging, prod
+
+Ingress:
+  HTTP routing
+  host and path based
+  SSL termination
+
+PersistentVolume:
+  storage resource
+  independent of pod lifecycle
+
+HPA:
+  auto scale pods
+  based on CPU or memory
+
+StatefulSet:
+  for stateful apps
+  databases, kafka
+  stable network identity
+
+DaemonSet:
+  runs on every node
+  logging, monitoring agents
+
+Job:
+  one time task
+  batch processing
+
+CronJob:
+  scheduled job
+  runs on schedule
+
+================================================================
+CERTIFICATION TARGET
+================================================================
+
+CKA  - Certified Kubernetes Administrator
+       most important for DevOps engineers
+       hands on exam - 2 hours - 17 questions
+       $395 - includes 2 attempts
+       validity 3 years
+
+CKAD - Certified Kubernetes Application Developer
+       for developers
+       hands on exam
+
+CKS  - Certified Kubernetes Security Specialist
+       advanced security
+       requires CKA first
+
+================================================================
+START TOMORROW - WEEK 1 DAY 1
+================================================================
+
+Install minikube:
+  winget install minikube
+
+Start cluster:
+  minikube start
+
+Create first pod:
+  kubectl run mypod --image=nginx
+
+See it running:
+  kubectl get pods
+
+Delete it:
+  kubectl delete pod mypod
+
+You are now a Kubernetes engineer!
+
+================================================================
+END OF ROADMAP
+================================================================
